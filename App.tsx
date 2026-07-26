@@ -20,6 +20,7 @@ import { AlarmScreen } from './src/components/AlarmScreen';
 import { DestinationSearch } from './src/components/DestinationSearch';
 import { IntroScreen } from './src/components/IntroScreen';
 import { RadiusSelector } from './src/components/RadiusSelector';
+import { ReliabilityCenterModal } from './src/components/ReliabilityCenterModal';
 import { SettingsModal } from './src/components/SettingsModal';
 import { TripMap } from './src/components/TripMap';
 import {
@@ -27,6 +28,7 @@ import {
   DEFAULT_RADIUS_METERS,
   DISMISS_ACTION_ID,
   SNOOZE_ACTION_ID,
+  TEST_CONFIRMED_ACTION_ID,
 } from './src/constants';
 import {
   configureNotifications,
@@ -39,6 +41,7 @@ import {
   getActiveTrip,
   getSavedRoutes,
   removeSavedRoute,
+  setAlarmTestResult,
 } from './src/services/storage';
 import {
   snoozeTrip,
@@ -80,6 +83,7 @@ function WakeStopApp() {
   const [testAlarmTrip, setTestAlarmTrip] = useState<ActiveTrip | null>(null);
   const [introComplete, setIntroComplete] = useState(false);
   const [settingsVisible, setSettingsVisible] = useState(false);
+  const [reliabilityVisible, setReliabilityVisible] = useState(false);
   const [routes, setRoutes] = useState<SavedRoute[]>([]);
   const [destination, setDestination] = useState<Destination | null>(null);
   const [radiusMeters, setRadiusMeters] = useState(DEFAULT_RADIUS_METERS);
@@ -106,6 +110,29 @@ function WakeStopApp() {
 
   const handleNotificationResponse = useCallback(
     async (response: Notifications.NotificationResponse) => {
+      const notificationType =
+        response.notification.request.content.data?.type;
+      if (notificationType === 'screen-off-alarm-test') {
+        await Notifications.dismissNotificationAsync(
+          response.notification.request.identifier,
+        ).catch(() => undefined);
+        const testConfirmed =
+          response.actionIdentifier === TEST_CONFIRMED_ACTION_ID ||
+          response.actionIdentifier ===
+            Notifications.DEFAULT_ACTION_IDENTIFIER;
+        if (testConfirmed) {
+          await setAlarmTestResult({
+            kind: 'screen-off',
+            status: 'completed',
+            timestamp: Date.now(),
+          });
+          setNotice('Screen-off alarm test completed successfully.');
+        } else {
+          setNotice('Screen-off alarm test dismissed.');
+        }
+        return;
+      }
+
       const responseTripId =
         response.notification.request.content.data?.tripId;
       if (
@@ -117,6 +144,11 @@ function WakeStopApp() {
           response.actionIdentifier === SNOOZE_ACTION_ID
         ) {
           await dismissTripNotifications(responseTripId);
+          await setAlarmTestResult({
+            kind: 'foreground',
+            status: 'completed',
+            timestamp: Date.now(),
+          });
           setTestAlarmTrip(null);
           setNotice(
             response.actionIdentifier === SNOOZE_ACTION_ID
@@ -403,6 +435,11 @@ function WakeStopApp() {
     setBusy(true);
     try {
       await dismissTripNotifications(testAlarmTrip.id);
+      await setAlarmTestResult({
+        kind: 'foreground',
+        status: 'completed',
+        timestamp: Date.now(),
+      });
       setTestAlarmTrip(null);
       setNotice('Test completed. No trip or location tracking was started.');
     } finally {
@@ -486,11 +523,24 @@ function WakeStopApp() {
           onTestAlarm={() => void handleTestAlarm()}
           onWatchIntro={() => setIntroComplete(false)}
           onOpenSettings={() => setSettingsVisible(true)}
+          onOpenReliability={() => setReliabilityVisible(true)}
         />
       )}
       <SettingsModal
         visible={settingsVisible}
         onClose={() => setSettingsVisible(false)}
+        onOpenReliability={() => {
+          setSettingsVisible(false);
+          setReliabilityVisible(true);
+        }}
+      />
+      <ReliabilityCenterModal
+        visible={reliabilityVisible}
+        onClose={() => setReliabilityVisible(false)}
+        onRunAlarmTest={() => {
+          setReliabilityVisible(false);
+          void handleTestAlarm();
+        }}
       />
     </SafeAreaProvider>
   );
@@ -511,6 +561,7 @@ type SetupScreenProps = {
   onTestAlarm: () => void;
   onWatchIntro: () => void;
   onOpenSettings: () => void;
+  onOpenReliability: () => void;
 };
 
 function SetupScreen({
@@ -528,6 +579,7 @@ function SetupScreen({
   onTestAlarm,
   onWatchIntro,
   onOpenSettings,
+  onOpenReliability,
 }: SetupScreenProps) {
   const { colors } = useAppTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -716,14 +768,25 @@ function SetupScreen({
           </View>
         ) : null}
 
-        <View style={styles.reliabilityCard}>
-          <Text style={styles.reliabilityTitle}>For reliable screen-off alarms</Text>
+        <Pressable
+          accessibilityRole="button"
+          style={({ pressed }) => [
+            styles.reliabilityCard,
+            pressed && styles.buttonPressed,
+          ]}
+          onPress={onOpenReliability}
+        >
+          <View style={styles.reliabilityCardHeader}>
+            <Text style={styles.reliabilityTitle}>
+              Check alarm reliability
+            </Text>
+            <Text style={styles.reliabilityArrow}>→</Text>
+          </View>
           <Text style={styles.reliabilityBody}>
-            Grant precise location, “Allow all the time,” and notifications.
-            On Xiaomi, Oppo, Vivo, and Samsung phones, also exclude WakeStop
-            from battery optimization.
+            Verify precise and background location, notifications, alarm sound,
+            battery settings, and screen-off behavior.
           </Text>
-        </View>
+        </Pressable>
       </ScrollView>
     </SafeAreaView>
   );
@@ -1278,6 +1341,16 @@ function createStyles(colors: AppColors) {
     color: colors.ink,
     fontSize: 14,
     fontWeight: '900',
+  },
+  reliabilityCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  reliabilityArrow: {
+    color: colors.orange,
+    fontSize: 22,
+    fontWeight: '900',
+    marginLeft: 'auto',
   },
   reliabilityBody: {
     color: colors.muted,

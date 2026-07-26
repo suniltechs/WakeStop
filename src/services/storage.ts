@@ -2,9 +2,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import {
   ACTIVE_TRIP_STORAGE_KEY,
+  ALARM_TEST_RESULT_STORAGE_KEY,
   SAVED_ROUTES_STORAGE_KEY,
 } from '../constants';
-import type { ActiveTrip, SavedRoute } from '../types';
+import type {
+  ActiveTrip,
+  AlarmTestResult,
+  SavedRoute,
+} from '../types';
 
 async function readJson<T>(key: string, fallback: T): Promise<T> {
   const raw = await AsyncStorage.getItem(key);
@@ -61,4 +66,20 @@ export async function removeSavedRoute(id: string): Promise<SavedRoute[]> {
   const nextRoutes = routes.filter((route) => route.id !== id);
   await setSavedRoutes(nextRoutes);
   return nextRoutes;
+}
+
+export function getAlarmTestResult(): Promise<AlarmTestResult | null> {
+  return readJson<AlarmTestResult | null>(
+    ALARM_TEST_RESULT_STORAGE_KEY,
+    null,
+  );
+}
+
+export async function setAlarmTestResult(
+  result: AlarmTestResult,
+): Promise<void> {
+  await AsyncStorage.setItem(
+    ALARM_TEST_RESULT_STORAGE_KEY,
+    JSON.stringify(result),
+  );
 }

@@ -40,3 +40,9 @@ export type PlaceSuggestion = {
   secondaryText: string;
   fullText: string;
 };
+
+export type AlarmTestResult = {
+  kind: 'foreground' | 'screen-off';
+  status: 'scheduled' | 'completed';
+  timestamp: number;
+};

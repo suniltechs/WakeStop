@@ -19,6 +19,7 @@ import {
 type Props = {
   visible: boolean;
   onClose: () => void;
+  onOpenReliability: () => void;
 };
 
 const THEME_OPTIONS: Array<{
@@ -47,7 +48,11 @@ const THEME_OPTIONS: Array<{
   },
 ];
 
-export function SettingsModal({ visible, onClose }: Props) {
+export function SettingsModal({
+  visible,
+  onClose,
+  onOpenReliability,
+}: Props) {
   const {
     colors,
     isDark,
@@ -89,6 +94,26 @@ export function SettingsModal({ visible, onClose }: Props) {
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
+          <Pressable
+            accessibilityRole="button"
+            style={({ pressed }) => [
+              styles.reliabilityButton,
+              pressed && styles.pressed,
+            ]}
+            onPress={onOpenReliability}
+          >
+            <View style={styles.reliabilityIcon}>
+              <Text style={styles.reliabilityIconText}>✓</Text>
+            </View>
+            <View style={styles.reliabilityCopy}>
+              <Text style={styles.reliabilityTitle}>Reliability Center</Text>
+              <Text style={styles.reliabilityBody}>
+                Check permissions, Android services, and alarm tests.
+              </Text>
+            </View>
+            <Text style={styles.reliabilityArrow}>→</Text>
+          </Pressable>
+
           <Text style={styles.sectionTitle}>Appearance</Text>
           <Text style={styles.sectionBody}>
             Choose how WakeStop looks. Your selection is saved on this device.
@@ -218,12 +243,55 @@ function createStyles(colors: AppColors) {
       color: colors.ink,
       fontSize: 21,
       fontWeight: '900',
+      marginTop: 28,
     },
     sectionBody: {
       color: colors.muted,
       fontSize: 13,
       lineHeight: 20,
       marginTop: 6,
+    },
+    reliabilityButton: {
+      minHeight: 82,
+      borderRadius: 19,
+      backgroundColor: colors.orange,
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 14,
+    },
+    reliabilityIcon: {
+      width: 44,
+      height: 44,
+      borderRadius: 14,
+      backgroundColor: colors.black,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    reliabilityIconText: {
+      color: colors.white,
+      fontSize: 20,
+      fontWeight: '900',
+    },
+    reliabilityCopy: {
+      flex: 1,
+      paddingHorizontal: 11,
+    },
+    reliabilityTitle: {
+      color: colors.black,
+      fontSize: 14,
+      fontWeight: '900',
+    },
+    reliabilityBody: {
+      color: colors.black,
+      fontSize: 10,
+      lineHeight: 15,
+      marginTop: 3,
+      opacity: 0.72,
+    },
+    reliabilityArrow: {
+      color: colors.black,
+      fontSize: 23,
+      fontWeight: '900',
     },
     options: {
       gap: 10,

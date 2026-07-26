@@ -8,15 +8,20 @@ import {
   DISMISS_ACTION_ID,
   PROGRESS_CHANNEL_ID,
   PROGRESS_NOTIFICATION_ID,
+  RELIABILITY_TEST_CATEGORY_ID,
+  SCREEN_OFF_TEST_DELAY_SECONDS,
   SNOOZE_ACTION_ID,
+  TEST_CONFIRMED_ACTION_ID,
 } from '../constants';
 import type { ActiveTrip } from '../types';
 import { formatDistance } from '../utils/distance';
 
 Notifications.setNotificationHandler({
   handleNotification: async (notification) => {
+    const notificationType = notification.request.content.data?.type;
     const isArrival =
-      notification.request.content.data?.type === 'arrival-alarm';
+      notificationType === 'arrival-alarm' ||
+      notificationType === 'screen-off-alarm-test';
     return {
       shouldShowBanner: isArrival,
       shouldShowList: true,
@@ -75,6 +80,22 @@ export async function configureNotifications(): Promise<void> {
       options: { opensAppToForeground: true, isDestructive: true },
     },
   ]);
+
+  await Notifications.setNotificationCategoryAsync(
+    RELIABILITY_TEST_CATEGORY_ID,
+    [
+      {
+        identifier: TEST_CONFIRMED_ACTION_ID,
+        buttonTitle: 'Test worked',
+        options: { opensAppToForeground: true },
+      },
+      {
+        identifier: DISMISS_ACTION_ID,
+        buttonTitle: 'Dismiss',
+        options: { opensAppToForeground: true, isDestructive: true },
+      },
+    ],
+  );
 }
 
 export async function requestNotificationPermission(): Promise<boolean> {
@@ -110,6 +131,34 @@ export async function showArrivalAlarm(trip: ActiveTrip): Promise<string> {
     },
     trigger:
       Platform.OS === 'android' ? { channelId: ARRIVAL_CHANNEL_ID } : null,
+  });
+}
+
+export async function scheduleScreenOffAlarmTest(
+  seconds = SCREEN_OFF_TEST_DELAY_SECONDS,
+): Promise<string> {
+  const identifier = `screen-off-test-${Date.now()}`;
+  return Notifications.scheduleNotificationAsync({
+    identifier,
+    content: {
+      title: 'WakeStop screen-off test',
+      body: 'If you can hear this alarm, tap “Test worked.”',
+      data: { type: 'screen-off-alarm-test', testId: identifier },
+      categoryIdentifier: RELIABILITY_TEST_CATEGORY_ID,
+      sound: ALARM_SOUND_FILE,
+      priority: Notifications.AndroidNotificationPriority.MAX,
+      vibrate: [0, 800, 250, 800, 250, 1_200],
+      color: '#FCA311',
+      interruptionLevel: 'timeSensitive',
+      autoDismiss: false,
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+      seconds,
+      ...(Platform.OS === 'android'
+        ? { channelId: ARRIVAL_CHANNEL_ID }
+        : {}),
+    },
   });
 }
 
