@@ -1,0 +1,18 @@
+export const colors = {
+  background: '#F7F4EC',
+  surface: '#FFFFFF',
+  ink: '#17211E',
+  muted: '#66706C',
+  border: '#DFE3DE',
+  teal: '#1C7C68',
+  tealDark: '#115B4C',
+  tealSoft: '#DDEFEA',
+  orange: '#F26B38',
+  orangeDark: '#C7461B',
+  orangeSoft: '#FDE7DC',
+  danger: '#B52D20',
+  alarm: '#B83224',
+  alarmDark: '#751C16',
+  white: '#FFFFFF',
+  black: '#000000',
+};
