@@ -18,7 +18,9 @@ import {
 
 import { AlarmScreen } from './src/components/AlarmScreen';
 import { DestinationSearch } from './src/components/DestinationSearch';
+import { IntroScreen } from './src/components/IntroScreen';
 import { RadiusSelector } from './src/components/RadiusSelector';
+import { SettingsModal } from './src/components/SettingsModal';
 import { TripMap } from './src/components/TripMap';
 import {
   BACKGROUND_LOCATION_TASK,
@@ -44,7 +46,11 @@ import {
   stopTrip,
 } from './src/services/tracking';
 import { processTripLocation } from './src/services/tripProcessor';
-import { colors } from './src/theme';
+import type { AppColors } from './src/theme';
+import {
+  AppThemeProvider,
+  useAppTheme,
+} from './src/themeContext';
 import type {
   ActiveTrip,
   Coordinates,
@@ -60,8 +66,20 @@ import { createId } from './src/utils/id';
 const TEST_ALARM_ID_PREFIX = 'test-alarm';
 
 export default function App() {
+  return (
+    <AppThemeProvider>
+      <WakeStopApp />
+    </AppThemeProvider>
+  );
+}
+
+function WakeStopApp() {
+  const { colors, isDark } = useAppTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [trip, setTrip] = useState<ActiveTrip | null>(null);
   const [testAlarmTrip, setTestAlarmTrip] = useState<ActiveTrip | null>(null);
+  const [introComplete, setIntroComplete] = useState(false);
+  const [settingsVisible, setSettingsVisible] = useState(false);
   const [routes, setRoutes] = useState<SavedRoute[]>([]);
   const [destination, setDestination] = useState<Destination | null>(null);
   const [radiusMeters, setRadiusMeters] = useState(DEFAULT_RADIUS_METERS);
@@ -80,6 +98,10 @@ export default function App() {
     ]);
     setTrip(storedTrip);
     setBackgroundEnabled(isBackgroundTracking);
+  }, []);
+
+  const handleIntroComplete = useCallback(() => {
+    setIntroComplete(true);
   }, []);
 
   const handleNotificationResponse = useCallback(
@@ -388,6 +410,10 @@ export default function App() {
     }
   };
 
+  if (!introComplete && trip?.status !== 'ringing') {
+    return <IntroScreen onComplete={handleIntroComplete} />;
+  }
+
   if (!ready) {
     return (
       <SafeAreaProvider>
@@ -432,7 +458,7 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <StatusBar style="dark" />
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       {trip ? (
         <ActiveTripScreen
           backgroundEnabled={backgroundEnabled}
@@ -440,6 +466,7 @@ export default function App() {
           notice={notice}
           trip={trip}
           onStop={() => void handleStop()}
+          onOpenSettings={() => setSettingsVisible(true)}
         />
       ) : (
         <SetupScreen
@@ -457,8 +484,14 @@ export default function App() {
             void handleStart(route?.destination, route?.radiusMeters)
           }
           onTestAlarm={() => void handleTestAlarm()}
+          onWatchIntro={() => setIntroComplete(false)}
+          onOpenSettings={() => setSettingsVisible(true)}
         />
       )}
+      <SettingsModal
+        visible={settingsVisible}
+        onClose={() => setSettingsVisible(false)}
+      />
     </SafeAreaProvider>
   );
 }
@@ -476,6 +509,8 @@ type SetupScreenProps = {
   onSave: () => void;
   onStart: (route?: SavedRoute) => void;
   onTestAlarm: () => void;
+  onWatchIntro: () => void;
+  onOpenSettings: () => void;
 };
 
 function SetupScreen({
@@ -491,7 +526,12 @@ function SetupScreen({
   onSave,
   onStart,
   onTestAlarm,
+  onWatchIntro,
+  onOpenSettings,
 }: SetupScreenProps) {
+  const { colors } = useAppTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView
@@ -508,6 +548,18 @@ function SetupScreen({
             <View style={styles.readyDot} />
             <Text style={styles.readyText}>READY</Text>
           </View>
+          <Pressable
+            accessibilityLabel="Open settings"
+            accessibilityRole="button"
+            hitSlop={8}
+            style={({ pressed }) => [
+              styles.headerSettingsButton,
+              pressed && styles.buttonPressed,
+            ]}
+            onPress={onOpenSettings}
+          >
+            <Text style={styles.headerSettingsIcon}>⚙</Text>
+          </Pressable>
         </View>
 
         <View style={styles.hero}>
@@ -563,36 +615,71 @@ function SetupScreen({
           ]}
           onPress={() => onStart()}
         >
-          <Text style={styles.startButtonText}>
+          <Text
+            style={[
+              styles.startButtonText,
+              (!destination || busy) && styles.startButtonTextDisabled,
+            ]}
+          >
             {busy ? 'Preparing permissions…' : 'Start trip'}
           </Text>
-          <Text style={styles.startArrow}>→</Text>
+          <Text
+            style={[
+              styles.startArrow,
+              (!destination || busy) && styles.startButtonTextDisabled,
+            ]}
+          >
+            →
+          </Text>
         </Pressable>
 
         {__DEV__ ? (
-          <View style={styles.testAlarmCard}>
-            <View style={styles.testAlarmCopy}>
-              <Text style={styles.testAlarmTitle}>Test the arrival alarm</Text>
-              <Text style={styles.testAlarmBody}>
-                Sends a real notification and plays the bundled alarm sound and
-                vibration. GPS tracking will not start.
-              </Text>
-            </View>
+          <>
             <Pressable
+              accessibilityHint="Replays the app launch animation"
               accessibilityRole="button"
-              disabled={busy}
               style={({ pressed }) => [
+                styles.introPreviewButton,
+                pressed && styles.buttonPressed,
+              ]}
+              onPress={onWatchIntro}
+            >
+              <Text style={styles.introPreviewIcon}>↻</Text>
+              <View style={styles.introPreviewCopy}>
+                <Text style={styles.introPreviewTitle}>
+                  Watch animated intro
+                </Text>
+                <Text style={styles.introPreviewBody}>
+                  Replay it without restarting the app
+                </Text>
+              </View>
+              <Text style={styles.introPreviewArrow}>→</Text>
+            </Pressable>
+
+            <View style={styles.testAlarmCard}>
+              <View style={styles.testAlarmCopy}>
+                <Text style={styles.testAlarmTitle}>Test the arrival alarm</Text>
+                <Text style={styles.testAlarmBody}>
+                  Sends a real notification and plays the bundled alarm sound
+                  and vibration. GPS tracking will not start.
+                </Text>
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                disabled={busy}
+                style={({ pressed }) => [
                 styles.testAlarmButton,
                 pressed && styles.buttonPressed,
-                busy && styles.startButtonDisabled,
-              ]}
-              onPress={onTestAlarm}
-            >
-              <Text style={styles.testAlarmButtonText}>
-                {busy ? 'Starting test…' : 'Test notification & alarm'}
-              </Text>
-            </Pressable>
-          </View>
+                busy && styles.testAlarmButtonDisabled,
+                ]}
+                onPress={onTestAlarm}
+              >
+                <Text style={styles.testAlarmButtonText}>
+                  {busy ? 'Starting test…' : 'Test notification & alarm'}
+                </Text>
+              </Pressable>
+            </View>
+          </>
         ) : null}
 
         {routes.length > 0 ? (
@@ -643,6 +730,9 @@ function SetupScreen({
 }
 
 function SectionLabel({ number, title }: { number: string; title: string }) {
+  const { colors } = useAppTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   return (
     <View style={styles.sectionLabel}>
       <View style={styles.sectionNumber}>
@@ -659,6 +749,7 @@ type ActiveTripScreenProps = {
   notice: string | null;
   trip: ActiveTrip;
   onStop: () => void;
+  onOpenSettings: () => void;
 };
 
 function ActiveTripScreen({
@@ -667,7 +758,10 @@ function ActiveTripScreen({
   notice,
   trip,
   onStop,
+  onOpenSettings,
 }: ActiveTripScreenProps) {
+  const { colors } = useAppTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1_000);
@@ -699,6 +793,19 @@ function ActiveTripScreen({
             <Text style={styles.activeBrand}>WakeStop</Text>
             <Text style={styles.activeSubtitle}>Trip in progress</Text>
           </View>
+          <Pressable
+            accessibilityLabel="Open settings"
+            accessibilityRole="button"
+            hitSlop={8}
+            style={({ pressed }) => [
+              styles.headerSettingsButton,
+              styles.activeSettingsButton,
+              pressed && styles.buttonPressed,
+            ]}
+            onPress={onOpenSettings}
+          >
+            <Text style={styles.headerSettingsIcon}>⚙</Text>
+          </Pressable>
           <View style={styles.armedPill}>
             <View style={styles.armedDot} />
             <Text style={styles.armedText}>
@@ -799,7 +906,8 @@ function ActiveTripScreen({
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: AppColors) {
+  return StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: colors.background,
@@ -880,6 +988,25 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     letterSpacing: 1,
   },
+  headerSettingsButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 13,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+  },
+  activeSettingsButton: {
+    marginLeft: 'auto',
+  },
+  headerSettingsIcon: {
+    color: colors.ink,
+    fontSize: 20,
+    lineHeight: 24,
+  },
   hero: {
     paddingTop: 42,
     paddingBottom: 30,
@@ -909,14 +1036,14 @@ const styles = StyleSheet.create({
   notice: {
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#E8C8A7',
-    backgroundColor: '#FFF1DF',
+    borderColor: colors.orange,
+    backgroundColor: colors.gray,
     paddingHorizontal: 14,
     paddingVertical: 12,
     marginBottom: 18,
   },
   noticeText: {
-    color: '#744619',
+    color: colors.ink,
     fontSize: 13,
     lineHeight: 19,
     fontWeight: '600',
@@ -982,16 +1109,19 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   startButtonDisabled: {
-    opacity: 0.46,
+    backgroundColor: colors.gray,
     shadowOpacity: 0,
   },
   startButtonText: {
-    color: colors.white,
+    color: colors.black,
     fontSize: 18,
     fontWeight: '900',
   },
+  startButtonTextDisabled: {
+    color: colors.muted,
+  },
   startArrow: {
-    color: colors.white,
+    color: colors.black,
     fontSize: 25,
     fontWeight: '600',
     marginLeft: 13,
@@ -999,10 +1129,46 @@ const styles = StyleSheet.create({
   testAlarmCard: {
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#E8C8A7',
-    backgroundColor: '#FFF8EE',
+    borderColor: colors.orange,
+    backgroundColor: colors.gray,
     padding: 16,
     marginTop: 16,
+  },
+  introPreviewButton: {
+    minHeight: 68,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    marginTop: 16,
+  },
+  introPreviewIcon: {
+    width: 38,
+    color: colors.tealDark,
+    fontSize: 28,
+    fontWeight: '700',
+  },
+  introPreviewCopy: {
+    flex: 1,
+  },
+  introPreviewTitle: {
+    color: colors.ink,
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  introPreviewBody: {
+    color: colors.muted,
+    fontSize: 11,
+    marginTop: 3,
+  },
+  introPreviewArrow: {
+    color: colors.tealDark,
+    fontSize: 22,
+    fontWeight: '800',
+    marginLeft: 10,
   },
   testAlarmCopy: {
     marginBottom: 12,
@@ -1023,12 +1189,15 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.ink,
+    backgroundColor: colors.orange,
   },
   testAlarmButtonText: {
-    color: colors.white,
+    color: colors.black,
     fontSize: 14,
     fontWeight: '900',
+  },
+  testAlarmButtonDisabled: {
+    opacity: 0.55,
   },
   buttonPressed: {
     opacity: 0.8,
@@ -1101,7 +1270,7 @@ const styles = StyleSheet.create({
   },
   reliabilityCard: {
     borderRadius: 18,
-    backgroundColor: '#ECE9DF',
+    backgroundColor: colors.gray,
     padding: 17,
     marginTop: 28,
   },
@@ -1137,7 +1306,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   armedPill: {
-    marginLeft: 'auto',
+    marginLeft: 8,
     borderRadius: 17,
     backgroundColor: colors.tealSoft,
     flexDirection: 'row',
@@ -1160,13 +1329,13 @@ const styles = StyleSheet.create({
   },
   distanceCard: {
     borderRadius: 26,
-    backgroundColor: colors.ink,
+    backgroundColor: colors.teal,
     paddingHorizontal: 22,
     paddingVertical: 26,
     marginBottom: 14,
   },
   distanceLabel: {
-    color: '#9FB5AE',
+    color: colors.gray,
     fontSize: 11,
     fontWeight: '900',
     letterSpacing: 1.5,
@@ -1180,14 +1349,14 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   distanceDestination: {
-    color: '#C6D3CE',
+    color: colors.white,
     fontSize: 16,
     fontWeight: '700',
   },
   progressTrack: {
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#35433F',
+    backgroundColor: colors.black,
     overflow: 'hidden',
     marginTop: 24,
   },
@@ -1198,7 +1367,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.orange,
   },
   radiusCopy: {
-    color: '#9FB5AE',
+    color: colors.gray,
     fontSize: 12,
     marginTop: 10,
   },
@@ -1223,7 +1392,7 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   snoozeCardBody: {
-    color: '#76503D',
+    color: colors.ink,
     fontSize: 12,
     lineHeight: 18,
     textAlign: 'center',
@@ -1277,8 +1446,8 @@ const styles = StyleSheet.create({
     minHeight: 58,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#D7A9A3',
-    backgroundColor: '#FFF4F1',
+    borderColor: colors.black,
+    backgroundColor: colors.gray,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 22,
@@ -1288,4 +1457,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '900',
   },
-});
+  });
+}

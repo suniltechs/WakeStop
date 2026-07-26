@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import * as Location from 'expo-location';
 import {
   ActivityIndicator,
   Pressable,
@@ -20,7 +21,8 @@ import {
   PlacesConfigurationError,
 } from '../services/places';
 import { createId } from '../utils/id';
-import { colors } from '../theme';
+import type { AppColors } from '../theme';
+import { useAppTheme } from '../themeContext';
 
 type Props = {
   value: Destination | null;
@@ -29,9 +31,12 @@ type Props = {
 };
 
 export function DestinationSearch({ value, origin, onChange }: Props) {
+  const { colors } = useAppTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
+  const [locating, setLocating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [manualMode, setManualMode] = useState(false);
   const [latitude, setLatitude] = useState('');
@@ -121,6 +126,52 @@ export function DestinationSearch({ value, origin, onChange }: Props) {
     setManualMode(false);
   };
 
+  const useCurrentLocation = async () => {
+    setLocating(true);
+    setError(null);
+    try {
+      const permission = await Location.requestForegroundPermissionsAsync();
+      if (!permission.granted) {
+        setError(
+          'Location permission is required to use your current GPS coordinates.',
+        );
+        return;
+      }
+
+      const servicesEnabled = await Location.hasServicesEnabledAsync();
+      if (!servicesEnabled) {
+        setError('Turn on Location Services, then try again.');
+        return;
+      }
+
+      const position = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
+      const currentLatitude = position.coords.latitude;
+      const currentLongitude = position.coords.longitude;
+      const currentDestination = destinationFromCoordinates(
+        currentLatitude,
+        currentLongitude,
+      );
+
+      setLatitude(currentLatitude.toFixed(6));
+      setLongitude(currentLongitude.toFixed(6));
+      onChange({
+        ...currentDestination,
+        placeId: `current-location:${currentDestination.address}`,
+        name: 'Current GPS location',
+      });
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : 'Could not read your current location.',
+      );
+    } finally {
+      setLocating(false);
+    }
+  };
+
   if (value) {
     return (
       <View style={styles.selectedCard}>
@@ -132,6 +183,14 @@ export function DestinationSearch({ value, origin, onChange }: Props) {
           <Text style={styles.selectedAddress} numberOfLines={2}>
             {value.address}
           </Text>
+          <View style={styles.selectedCoordinates}>
+            <Text style={styles.coordinateValue}>
+              LAT {value.latitude.toFixed(6)}
+            </Text>
+            <Text style={styles.coordinateValue}>
+              LNG {value.longitude.toFixed(6)}
+            </Text>
+          </View>
         </View>
         <Pressable
           accessibilityRole="button"
@@ -155,10 +214,11 @@ export function DestinationSearch({ value, origin, onChange }: Props) {
               accessibilityLabel="Search destination"
               autoCapitalize="words"
               autoCorrect={false}
+              editable={placesConfigured}
               placeholder={
-                placesConfigured ? 'Search your stop' : 'Places key not configured'
+                placesConfigured ? 'Search your stop' : 'Place search unavailable'
               }
-              placeholderTextColor="#929A96"
+              placeholderTextColor={colors.muted}
               style={styles.input}
               value={query}
               onChangeText={setQuery}
@@ -188,29 +248,47 @@ export function DestinationSearch({ value, origin, onChange }: Props) {
               <Text style={styles.googleAttribution}>Powered by Google</Text>
             </View>
           ) : null}
+
+          {!placesConfigured ? (
+            <View style={styles.placesUnavailable}>
+              <Text style={styles.placesUnavailableTitle}>
+                Google place search is not configured
+              </Text>
+              <Text style={styles.placesUnavailableBody}>
+                Use your current location or enter destination coordinates
+                below. These options work without API keys.
+              </Text>
+            </View>
+          ) : null}
         </>
       ) : (
         <View style={styles.manualCard}>
-          <Text style={styles.manualTitle}>Enter coordinates</Text>
+          <Text style={styles.manualTitle}>Enter latitude and longitude</Text>
           <View style={styles.coordinateRow}>
-            <TextInput
-              accessibilityLabel="Destination latitude"
-              keyboardType="numbers-and-punctuation"
-              placeholder="Latitude"
-              placeholderTextColor="#929A96"
-              style={[styles.inputShell, styles.coordinateInput]}
-              value={latitude}
-              onChangeText={setLatitude}
-            />
-            <TextInput
-              accessibilityLabel="Destination longitude"
-              keyboardType="numbers-and-punctuation"
-              placeholder="Longitude"
-              placeholderTextColor="#929A96"
-              style={[styles.inputShell, styles.coordinateInput]}
-              value={longitude}
-              onChangeText={setLongitude}
-            />
+            <View style={styles.coordinateField}>
+              <Text style={styles.coordinateLabel}>Latitude</Text>
+              <TextInput
+                accessibilityLabel="Destination latitude"
+                keyboardType="numbers-and-punctuation"
+                placeholder="e.g. 12.971599"
+                placeholderTextColor={colors.muted}
+                style={[styles.inputShell, styles.coordinateInput]}
+                value={latitude}
+                onChangeText={setLatitude}
+              />
+            </View>
+            <View style={styles.coordinateField}>
+              <Text style={styles.coordinateLabel}>Longitude</Text>
+              <TextInput
+                accessibilityLabel="Destination longitude"
+                keyboardType="numbers-and-punctuation"
+                placeholder="e.g. 77.594566"
+                placeholderTextColor={colors.muted}
+                style={[styles.inputShell, styles.coordinateInput]}
+                value={longitude}
+                onChangeText={setLongitude}
+              />
+            </View>
           </View>
           <Pressable style={styles.coordinateButton} onPress={useCoordinates}>
             <Text style={styles.coordinateButtonText}>Use these coordinates</Text>
@@ -220,22 +298,60 @@ export function DestinationSearch({ value, origin, onChange }: Props) {
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
-      <Pressable
-        accessibilityRole="button"
-        onPress={() => {
-          setManualMode((current) => !current);
-          setError(null);
-        }}
-      >
-        <Text style={styles.manualLink}>
-          {manualMode ? 'Back to place search' : 'Or enter map coordinates'}
-        </Text>
-      </Pressable>
+      {manualMode ? (
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => {
+            setManualMode(false);
+            setError(null);
+          }}
+        >
+          <Text style={styles.manualLink}>Back to destination options</Text>
+        </Pressable>
+      ) : (
+        <View style={styles.locationActions}>
+          <Pressable
+            accessibilityRole="button"
+            disabled={locating}
+            style={({ pressed }) => [
+              styles.locationAction,
+              pressed && styles.locationActionPressed,
+              locating && styles.locationActionDisabled,
+            ]}
+            onPress={() => void useCurrentLocation()}
+          >
+            {locating ? (
+              <ActivityIndicator color={colors.tealDark} size="small" />
+            ) : (
+              <Text style={styles.locationActionIcon}>⌖</Text>
+            )}
+            <Text style={styles.locationActionText}>
+              {locating ? 'Finding location…' : 'Use current location'}
+            </Text>
+          </Pressable>
+
+          <Pressable
+            accessibilityRole="button"
+            style={({ pressed }) => [
+              styles.locationAction,
+              pressed && styles.locationActionPressed,
+            ]}
+            onPress={() => {
+              setManualMode(true);
+              setError(null);
+            }}
+          >
+            <Text style={styles.locationActionIcon}>#</Text>
+            <Text style={styles.locationActionText}>Enter latitude / longitude</Text>
+          </Pressable>
+        </View>
+      )}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: AppColors) {
+  return StyleSheet.create({
   inputShell: {
     minHeight: 58,
     borderRadius: 16,
@@ -248,7 +364,7 @@ const styles = StyleSheet.create({
   },
   searchIcon: {
     fontSize: 28,
-    color: colors.teal,
+    color: colors.orange,
     marginRight: 10,
     marginTop: -4,
   },
@@ -292,13 +408,31 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
   },
+  placesUnavailable: {
+    borderLeftWidth: 3,
+    borderLeftColor: colors.orange,
+    paddingLeft: 11,
+    paddingRight: 6,
+    marginTop: 10,
+  },
+  placesUnavailableTitle: {
+    color: colors.ink,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  placesUnavailableBody: {
+    color: colors.muted,
+    fontSize: 11,
+    lineHeight: 16,
+    marginTop: 3,
+  },
   selectedCard: {
     minHeight: 76,
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#BBD9D1',
+    borderColor: colors.border,
     backgroundColor: colors.tealSoft,
     padding: 14,
   },
@@ -329,6 +463,21 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginTop: 3,
   },
+  selectedCoordinates: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 7,
+    marginTop: 7,
+  },
+  coordinateValue: {
+    borderRadius: 7,
+    backgroundColor: 'rgba(255,255,255,0.72)',
+    color: colors.tealDark,
+    fontSize: 10,
+    fontWeight: '800',
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+  },
   changeText: {
     color: colors.tealDark,
     fontSize: 13,
@@ -351,8 +500,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
   },
-  coordinateInput: {
+  coordinateField: {
     flex: 1,
+  },
+  coordinateLabel: {
+    color: colors.muted,
+    fontSize: 11,
+    fontWeight: '700',
+    marginBottom: 5,
+  },
+  coordinateInput: {
+    width: '100%',
     minHeight: 50,
     paddingVertical: 10,
     color: colors.ink,
@@ -376,10 +534,49 @@ const styles = StyleSheet.create({
     marginTop: 10,
     textAlign: 'center',
   },
+  locationActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 10,
+  },
+  locationAction: {
+    flex: 1,
+    minHeight: 58,
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+  },
+  locationActionPressed: {
+    opacity: 0.75,
+    transform: [{ scale: 0.99 }],
+  },
+  locationActionDisabled: {
+    opacity: 0.58,
+  },
+  locationActionIcon: {
+    color: colors.tealDark,
+    fontSize: 20,
+    fontWeight: '900',
+    marginRight: 6,
+  },
+  locationActionText: {
+    flexShrink: 1,
+    color: colors.tealDark,
+    fontSize: 12,
+    fontWeight: '800',
+    lineHeight: 16,
+    textAlign: 'center',
+  },
   error: {
     color: colors.danger,
     fontSize: 13,
     lineHeight: 18,
     marginTop: 8,
   },
-});
+  });
+}

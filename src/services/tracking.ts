@@ -99,7 +99,7 @@ export async function startTrip(
       foregroundService: {
         notificationTitle: 'WakeStop trip is armed',
         notificationBody: `Tracking your distance to ${destination.name}.`,
-        notificationColor: '#1C7C68',
+        notificationColor: '#14213D',
         killServiceOnDestroy: false,
       },
     });

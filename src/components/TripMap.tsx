@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import MapView, {
   Circle,
@@ -5,7 +6,8 @@ import MapView, {
   PROVIDER_GOOGLE,
 } from 'react-native-maps';
 
-import { colors } from '../theme';
+import type { AppColors } from '../theme';
+import { useAppTheme } from '../themeContext';
 import type { Coordinates, Destination } from '../types';
 
 type Props = {
@@ -21,6 +23,9 @@ export function TripMap({
   radiusMeters,
   height = 220,
 }: Props) {
+  const { colors } = useAppTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   if (!process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY?.trim()) {
     return (
       <View style={[styles.fallback, { height }]}>
@@ -71,8 +76,8 @@ export function TripMap({
       <Circle
         center={destination}
         radius={radiusMeters}
-        strokeColor="rgba(242, 107, 56, 0.9)"
-        fillColor="rgba(242, 107, 56, 0.16)"
+        strokeColor="rgba(252, 163, 17, 0.9)"
+        fillColor="rgba(252, 163, 17, 0.16)"
       />
       {currentLocation ? (
         <Marker
@@ -85,7 +90,8 @@ export function TripMap({
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: AppColors) {
+  return StyleSheet.create({
   map: {
     width: '100%',
     borderRadius: 20,
@@ -95,8 +101,8 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     borderStyle: 'dashed',
-    borderColor: '#B8C3BE',
-    backgroundColor: '#EEF1ED',
+    borderColor: colors.border,
+    backgroundColor: colors.gray,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 28,
@@ -119,4 +125,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 5,
   },
-});
+  });
+}

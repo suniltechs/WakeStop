@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
     width: 9,
     height: 9,
     borderRadius: 5,
-    backgroundColor: '#FFE277',
+    backgroundColor: colors.orange,
     marginRight: 8,
   },
   ringingText: {
@@ -197,7 +197,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   distance: {
-    color: '#FFD8CC',
+    color: colors.gray,
     fontSize: 17,
     fontWeight: '700',
     marginTop: 8,
@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   dismissHint: {
-    color: '#8F514A',
+    color: colors.ink,
     fontSize: 12,
     marginTop: 3,
   },
@@ -227,7 +227,7 @@ const styles = StyleSheet.create({
     minHeight: 58,
     borderRadius: 18,
     borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.7)',
+    borderColor: colors.white,
     alignItems: 'center',
     justifyContent: 'center',
   },

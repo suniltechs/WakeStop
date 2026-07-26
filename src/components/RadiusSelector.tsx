@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -7,7 +7,8 @@ import {
   View,
 } from 'react-native';
 
-import { colors } from '../theme';
+import type { AppColors } from '../theme';
+import { useAppTheme } from '../themeContext';
 
 const PRESETS = [
   { label: '300 m', value: 300 },
@@ -21,6 +22,8 @@ type Props = {
 };
 
 export function RadiusSelector({ value, onChange }: Props) {
+  const { colors } = useAppTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const [custom, setCustom] = useState(
     PRESETS.some((preset) => preset.value === value) ? '' : String(value),
   );
@@ -83,7 +86,8 @@ export function RadiusSelector({ value, onChange }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+function createStyles(colors: AppColors) {
+  return StyleSheet.create({
   row: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -100,8 +104,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   chipSelected: {
-    backgroundColor: colors.ink,
-    borderColor: colors.ink,
+    backgroundColor: colors.orange,
+    borderColor: colors.orange,
   },
   chipText: {
     color: colors.ink,
@@ -109,7 +113,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   chipTextSelected: {
-    color: colors.white,
+    color: colors.black,
   },
   customRow: {
     flexDirection: 'row',
@@ -133,4 +137,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginLeft: 10,
   },
-});
+  });
+}

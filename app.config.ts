@@ -22,7 +22,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   android: {
     package: 'in.rentla.wakestop',
     adaptiveIcon: {
-      backgroundColor: '#F7F4EC',
+      backgroundColor: '#FFFFFF',
       foregroundImage: './assets/android-icon-foreground.png',
       monochromeImage: './assets/android-icon-monochrome.png',
     },
@@ -47,7 +47,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     [
       'expo-notifications',
       {
-        color: '#F26B38',
+        color: '#FCA311',
         defaultChannel: 'arrival-alarm',
         sounds: ['./assets/alarm.wav'],
       },

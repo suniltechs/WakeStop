@@ -39,7 +39,7 @@ export async function configureNotifications(): Promise<void> {
       vibrationPattern: [0, 800, 250, 800, 250, 1_200],
       enableVibrate: true,
       enableLights: true,
-      lightColor: '#F26B38',
+      lightColor: '#FCA311',
       lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
       showBadge: true,
       audioAttributes: {
@@ -104,7 +104,7 @@ export async function showArrivalAlarm(trip: ActiveTrip): Promise<string> {
       sound: ALARM_SOUND_FILE,
       priority: Notifications.AndroidNotificationPriority.MAX,
       vibrate: [0, 800, 250, 800, 250, 1_200],
-      color: '#F26B38',
+      color: '#FCA311',
       interruptionLevel: 'timeSensitive',
       autoDismiss: false,
     },
@@ -128,7 +128,7 @@ export async function showProgressNotification(
       sound: false,
       sticky: true,
       autoDismiss: false,
-      color: '#1C7C68',
+      color: '#14213D',
     },
     trigger: { channelId: PROGRESS_CHANNEL_ID },
   });
