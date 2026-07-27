@@ -1,7 +1,5 @@
 import type { ConfigContext, ExpoConfig } from 'expo/config';
 
-const mapsApiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
-
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: 'WakeStop',
@@ -14,7 +12,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ios: {
     supportsTablet: false,
     bundleIdentifier: 'in.rentla.wakestop',
-    config: mapsApiKey ? { googleMapsApiKey: mapsApiKey } : undefined,
     infoPlist: {
       UIBackgroundModes: ['location', 'audio'],
     },
@@ -31,6 +28,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   plugins: [
     'expo-dev-client',
+    '@maplibre/maplibre-react-native',
     [
       'expo-location',
       {
@@ -61,17 +59,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         microphonePermission: false,
       },
     ],
-    ...(mapsApiKey
-      ? [
-          [
-            'react-native-maps',
-            {
-              androidGoogleMapsApiKey: mapsApiKey,
-              iosGoogleMapsApiKey: mapsApiKey,
-            },
-          ] as [string, Record<string, string>],
-        ]
-      : []),
   ],
   web: {
     favicon: './assets/favicon.png',

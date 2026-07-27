@@ -1,5 +1,7 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import {
+  Animated,
+  Easing,
   Pressable,
   StyleSheet,
   Text,
@@ -30,6 +32,7 @@ export function AlarmScreen({
   onDismiss,
 }: Props) {
   const player = useAudioPlayer(require('../../assets/alarm.wav'));
+  const bellSwing = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     let mounted = true;
@@ -59,6 +62,39 @@ export function AlarmScreen({
     };
   }, [player, trip.destination.name]);
 
+  useEffect(() => {
+    const ringingAnimation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(bellSwing, {
+          toValue: -1,
+          duration: 110,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(bellSwing, {
+          toValue: 1,
+          duration: 220,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(bellSwing, {
+          toValue: 0,
+          duration: 110,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.delay(180),
+      ]),
+    );
+
+    ringingAnimation.start();
+
+    return () => {
+      ringingAnimation.stop();
+      bellSwing.setValue(0);
+    };
+  }, [bellSwing]);
+
   const stopPlayback = () => {
     Vibration.cancel();
     player.pause();
@@ -84,7 +120,28 @@ export function AlarmScreen({
             {isTest ? 'TEST ALARM' : 'ARRIVAL ALARM'}
           </Text>
         </View>
-        <Text style={styles.icon}>◉</Text>
+        <View
+          accessibilityLabel="Ringing alarm bell"
+          style={styles.iconCircle}
+        >
+          <Animated.Text
+            style={[
+              styles.bellIcon,
+              {
+                transform: [
+                  {
+                    rotate: bellSwing.interpolate({
+                      inputRange: [-1, 1],
+                      outputRange: ['-18deg', '18deg'],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
+            {'🔔'}
+          </Animated.Text>
+        </View>
         <Text style={styles.title}>{isTest ? 'Alarm test' : 'Wake up!'}</Text>
         <Text style={styles.destination}>{trip.destination.name}</Text>
         <Text style={styles.distance}>
@@ -169,17 +226,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     letterSpacing: 1.5,
   },
-  icon: {
+  iconCircle: {
     width: 112,
     height: 112,
-    borderRadius: 56,
-    backgroundColor: colors.white,
-    color: colors.alarm,
-    fontSize: 66,
-    fontWeight: '900',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bellIcon: {
+    fontSize: 62,
     textAlign: 'center',
-    lineHeight: 106,
-    overflow: 'hidden',
   },
   title: {
     color: colors.white,

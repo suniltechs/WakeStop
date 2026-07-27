@@ -17,11 +17,16 @@ import {
 } from 'react-native-safe-area-context';
 
 import { AlarmScreen } from './src/components/AlarmScreen';
+import {
+  type AppTab,
+  BottomNavigation,
+} from './src/components/BottomNavigation';
+import { DestinationMapPicker } from './src/components/DestinationMapPicker';
 import { DestinationSearch } from './src/components/DestinationSearch';
 import { IntroScreen } from './src/components/IntroScreen';
 import { RadiusSelector } from './src/components/RadiusSelector';
 import { ReliabilityCenterModal } from './src/components/ReliabilityCenterModal';
-import { SettingsModal } from './src/components/SettingsModal';
+import { SettingsScreen } from './src/components/SettingsScreen';
 import { TripMap } from './src/components/TripMap';
 import {
   BACKGROUND_LOCATION_TASK,
@@ -82,7 +87,8 @@ function WakeStopApp() {
   const [trip, setTrip] = useState<ActiveTrip | null>(null);
   const [testAlarmTrip, setTestAlarmTrip] = useState<ActiveTrip | null>(null);
   const [introComplete, setIntroComplete] = useState(false);
-  const [settingsVisible, setSettingsVisible] = useState(false);
+  const [activeTab, setActiveTab] = useState<AppTab>('home');
+  const [mapPickerVisible, setMapPickerVisible] = useState(false);
   const [reliabilityVisible, setReliabilityVisible] = useState(false);
   const [routes, setRoutes] = useState<SavedRoute[]>([]);
   const [destination, setDestination] = useState<Destination | null>(null);
@@ -107,6 +113,18 @@ function WakeStopApp() {
   const handleIntroComplete = useCallback(() => {
     setIntroComplete(true);
   }, []);
+
+  const handleOpenMapPicker = useCallback(() => {
+    if (trip) {
+      setActiveTab('home');
+      Alert.alert(
+        'Trip already active',
+        'Stop the current trip before choosing a new destination.',
+      );
+      return;
+    }
+    setMapPickerVisible(true);
+  }, [trip]);
 
   const handleNotificationResponse = useCallback(
     async (response: Notifications.NotificationResponse) => {
@@ -304,6 +322,7 @@ function WakeStopApp() {
     try {
       const result = await startTrip(selectedDestination, selectedRadius);
       setTrip(result.trip);
+      setActiveTab('home');
       setBackgroundEnabled(result.backgroundEnabled);
       setDestination(selectedDestination);
       setRadiusMeters(selectedRadius);
@@ -496,42 +515,69 @@ function WakeStopApp() {
   return (
     <SafeAreaProvider>
       <StatusBar style={isDark ? 'light' : 'dark'} />
-      {trip ? (
-        <ActiveTripScreen
-          backgroundEnabled={backgroundEnabled}
-          busy={busy}
-          notice={notice}
-          trip={trip}
-          onStop={() => void handleStop()}
-          onOpenSettings={() => setSettingsVisible(true)}
+      <View style={styles.appShell}>
+        {activeTab === 'home' ? (
+          trip ? (
+            <ActiveTripScreen
+              backgroundEnabled={backgroundEnabled}
+              busy={busy}
+              notice={notice}
+              trip={trip}
+              onStop={() => void handleStop()}
+              onOpenSettings={() => setActiveTab('settings')}
+            />
+          ) : (
+            <SetupScreen
+              busy={busy}
+              destination={destination}
+              notice={notice}
+              origin={origin}
+              radiusMeters={radiusMeters}
+              onDestinationChange={setDestination}
+              onRadiusChange={setRadiusMeters}
+              onSave={() => void handleSave()}
+              onStart={() => void handleStart()}
+              onTestAlarm={() => void handleTestAlarm()}
+              onWatchIntro={() => setIntroComplete(false)}
+              onOpenMap={handleOpenMapPicker}
+              onOpenSettings={() => setActiveTab('settings')}
+              onOpenReliability={() => setReliabilityVisible(true)}
+            />
+          )
+        ) : activeTab === 'saved' ? (
+          <SavedStopsScreen
+            busy={busy}
+            routes={routes}
+            tripActive={Boolean(trip)}
+            onCreateAlarm={() => setActiveTab('home')}
+            onRemoveRoute={handleRemoveRoute}
+            onStart={(route) =>
+              void handleStart(route.destination, route.radiusMeters)
+            }
+          />
+        ) : (
+          <SettingsScreen
+            onOpenReliability={() => setReliabilityVisible(true)}
+          />
+        )}
+        <BottomNavigation
+          activeTab={activeTab}
+          tripActive={Boolean(trip)}
+          onChange={setActiveTab}
+          onChooseMap={handleOpenMapPicker}
         />
-      ) : (
-        <SetupScreen
-          busy={busy}
-          destination={destination}
-          notice={notice}
-          origin={origin}
-          radiusMeters={radiusMeters}
-          routes={routes}
-          onDestinationChange={setDestination}
-          onRadiusChange={setRadiusMeters}
-          onRemoveRoute={handleRemoveRoute}
-          onSave={() => void handleSave()}
-          onStart={(route) =>
-            void handleStart(route?.destination, route?.radiusMeters)
-          }
-          onTestAlarm={() => void handleTestAlarm()}
-          onWatchIntro={() => setIntroComplete(false)}
-          onOpenSettings={() => setSettingsVisible(true)}
-          onOpenReliability={() => setReliabilityVisible(true)}
-        />
-      )}
-      <SettingsModal
-        visible={settingsVisible}
-        onClose={() => setSettingsVisible(false)}
-        onOpenReliability={() => {
-          setSettingsVisible(false);
-          setReliabilityVisible(true);
+      </View>
+      <DestinationMapPicker
+        destination={destination}
+        origin={origin}
+        radiusMeters={radiusMeters}
+        visible={mapPickerVisible}
+        onCancel={() => setMapPickerVisible(false)}
+        onConfirm={(selectedDestination, selectedRadius) => {
+          setDestination(selectedDestination);
+          setRadiusMeters(selectedRadius);
+          setMapPickerVisible(false);
+          setActiveTab('home');
         }}
       />
       <ReliabilityCenterModal
@@ -552,14 +598,13 @@ type SetupScreenProps = {
   notice: string | null;
   origin?: Coordinates;
   radiusMeters: number;
-  routes: SavedRoute[];
   onDestinationChange: (destination: Destination | null) => void;
   onRadiusChange: (radiusMeters: number) => void;
-  onRemoveRoute: (route: SavedRoute) => void;
   onSave: () => void;
-  onStart: (route?: SavedRoute) => void;
+  onStart: () => void;
   onTestAlarm: () => void;
   onWatchIntro: () => void;
+  onOpenMap: () => void;
   onOpenSettings: () => void;
   onOpenReliability: () => void;
 };
@@ -570,14 +615,13 @@ function SetupScreen({
   notice,
   origin,
   radiusMeters,
-  routes,
   onDestinationChange,
   onRadiusChange,
-  onRemoveRoute,
   onSave,
   onStart,
   onTestAlarm,
   onWatchIntro,
+  onOpenMap,
   onOpenSettings,
   onOpenReliability,
 }: SetupScreenProps) {
@@ -634,6 +678,7 @@ function SetupScreen({
           origin={origin}
           value={destination}
           onChange={onDestinationChange}
+          onOpenMap={onOpenMap}
         />
 
         <View style={styles.sectionGap} />
@@ -734,40 +779,6 @@ function SetupScreen({
           </>
         ) : null}
 
-        {routes.length > 0 ? (
-          <View style={styles.savedSection}>
-            <Text style={styles.savedTitle}>Saved stops</Text>
-            {routes.map((route) => (
-              <View key={route.id} style={styles.routeCard}>
-                <Pressable
-                  accessibilityRole="button"
-                  disabled={busy}
-                  style={styles.routeStart}
-                  onPress={() => onStart(route)}
-                >
-                  <View style={styles.routeIcon}>
-                    <Text style={styles.routeIconText}>⌖</Text>
-                  </View>
-                  <View style={styles.routeCopy}>
-                    <Text style={styles.routeName}>{route.label}</Text>
-                    <Text style={styles.routeMeta}>
-                      Alarm at {formatDistance(route.radiusMeters)}
-                    </Text>
-                  </View>
-                  <Text style={styles.routeArrow}>Start →</Text>
-                </Pressable>
-                <Pressable
-                  accessibilityLabel={`Remove ${route.label}`}
-                  hitSlop={12}
-                  onPress={() => onRemoveRoute(route)}
-                >
-                  <Text style={styles.removeText}>×</Text>
-                </Pressable>
-              </View>
-            ))}
-          </View>
-        ) : null}
-
         <Pressable
           accessibilityRole="button"
           style={({ pressed }) => [
@@ -787,6 +798,142 @@ function SetupScreen({
             battery settings, and screen-off behavior.
           </Text>
         </Pressable>
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+type SavedStopsScreenProps = {
+  busy: boolean;
+  routes: SavedRoute[];
+  tripActive: boolean;
+  onCreateAlarm: () => void;
+  onRemoveRoute: (route: SavedRoute) => void;
+  onStart: (route: SavedRoute) => void;
+};
+
+function SavedStopsScreen({
+  busy,
+  routes,
+  tripActive,
+  onCreateAlarm,
+  onRemoveRoute,
+  onStart,
+}: SavedStopsScreenProps) {
+  const { colors } = useAppTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
+  return (
+    <SafeAreaView edges={['top']} style={styles.safeArea}>
+      <ScrollView
+        contentContainerStyle={styles.savedScreenContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.savedHeader}>
+          <Text style={styles.savedEyebrow}>QUICK START</Text>
+          <Text style={styles.savedScreenTitle}>Saved stops</Text>
+          <Text style={styles.savedScreenBody}>
+            Start a familiar journey with the alarm distance you saved.
+          </Text>
+        </View>
+
+        {tripActive ? (
+          <Pressable
+            accessibilityRole="button"
+            style={({ pressed }) => [
+              styles.activeTripBanner,
+              pressed && styles.buttonPressed,
+            ]}
+            onPress={onCreateAlarm}
+          >
+            <View style={styles.activeTripBannerDot} />
+            <View style={styles.activeTripBannerCopy}>
+              <Text style={styles.activeTripBannerTitle}>
+                A trip is currently active
+              </Text>
+              <Text style={styles.activeTripBannerBody}>
+                Open Home to view or stop it before starting another.
+              </Text>
+            </View>
+            <Text style={styles.activeTripBannerArrow}>→</Text>
+          </Pressable>
+        ) : null}
+
+        {routes.length > 0 ? (
+          <View style={styles.savedList}>
+            {routes.map((route) => (
+              <View key={route.id} style={styles.routeCard}>
+                <Pressable
+                  accessibilityHint={
+                    tripActive
+                      ? 'Stop the active trip before starting this saved stop'
+                      : `Starts an alarm for ${route.label}`
+                  }
+                  accessibilityRole="button"
+                  disabled={busy || tripActive}
+                  style={({ pressed }) => [
+                    styles.routeStart,
+                    (busy || tripActive) && styles.savedRouteDisabled,
+                    pressed && !busy && !tripActive && styles.buttonPressed,
+                  ]}
+                  onPress={() => onStart(route)}
+                >
+                  <View style={styles.routeIcon}>
+                    <Text style={styles.routeIconText}>⌖</Text>
+                  </View>
+                  <View style={styles.routeCopy}>
+                    <Text style={styles.routeName}>{route.label}</Text>
+                    <Text
+                      numberOfLines={1}
+                      style={styles.routeAddress}
+                    >
+                      {route.destination.address}
+                    </Text>
+                    <Text style={styles.routeMeta}>
+                      Alarm at {formatDistance(route.radiusMeters)}
+                    </Text>
+                  </View>
+                  <Text style={styles.routeArrow}>
+                    {tripActive ? 'Active' : 'Start →'}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  accessibilityLabel={`Remove ${route.label}`}
+                  accessibilityRole="button"
+                  hitSlop={12}
+                  style={({ pressed }) => [
+                    styles.removeButton,
+                    pressed && styles.buttonPressed,
+                  ]}
+                  onPress={() => onRemoveRoute(route)}
+                >
+                  <Text style={styles.removeText}>×</Text>
+                </Pressable>
+              </View>
+            ))}
+          </View>
+        ) : (
+          <View style={styles.emptySavedCard}>
+            <View style={styles.emptySavedIcon}>
+              <Text style={styles.emptySavedIconText}>★</Text>
+            </View>
+            <Text style={styles.emptySavedTitle}>No saved stops yet</Text>
+            <Text style={styles.emptySavedBody}>
+              Choose a destination on Home, then tap “Save for one-tap start.”
+            </Text>
+            <Pressable
+              accessibilityRole="button"
+              style={({ pressed }) => [
+                styles.emptySavedButton,
+                pressed && styles.buttonPressed,
+              ]}
+              onPress={onCreateAlarm}
+            >
+              <Text style={styles.emptySavedButtonText}>Create an alarm</Text>
+              <Text style={styles.emptySavedButtonArrow}>→</Text>
+            </Pressable>
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -971,6 +1118,10 @@ function ActiveTripScreen({
 
 function createStyles(colors: AppColors) {
   return StyleSheet.create({
+  appShell: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
   safeArea: {
     flex: 1,
     backgroundColor: colors.background,
@@ -1269,6 +1420,37 @@ function createStyles(colors: AppColors) {
   savedSection: {
     marginTop: 34,
   },
+  savedScreenContent: {
+    flexGrow: 1,
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 34,
+  },
+  savedHeader: {
+    paddingBottom: 22,
+  },
+  savedEyebrow: {
+    color: colors.orange,
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1.7,
+  },
+  savedScreenTitle: {
+    color: colors.ink,
+    fontSize: 31,
+    lineHeight: 38,
+    fontWeight: '900',
+    marginTop: 3,
+  },
+  savedScreenBody: {
+    color: colors.muted,
+    fontSize: 13,
+    lineHeight: 20,
+    marginTop: 5,
+  },
+  savedList: {
+    gap: 10,
+  },
   savedTitle: {
     color: colors.ink,
     fontSize: 18,
@@ -1320,16 +1502,125 @@ function createStyles(colors: AppColors) {
     fontSize: 12,
     marginTop: 3,
   },
+  routeAddress: {
+    color: colors.muted,
+    fontSize: 11,
+    marginTop: 3,
+  },
   routeArrow: {
     color: colors.orangeDark,
     fontSize: 13,
     fontWeight: '900',
+  },
+  savedRouteDisabled: {
+    opacity: 0.48,
+  },
+  removeButton: {
+    minWidth: 38,
+    minHeight: 52,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   removeText: {
     color: colors.muted,
     fontSize: 24,
     lineHeight: 26,
     marginLeft: 8,
+  },
+  activeTripBanner: {
+    minHeight: 76,
+    borderRadius: 18,
+    backgroundColor: colors.teal,
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 15,
+    marginBottom: 16,
+  },
+  activeTripBannerDot: {
+    width: 11,
+    height: 11,
+    borderRadius: 6,
+    backgroundColor: colors.orange,
+  },
+  activeTripBannerCopy: {
+    flex: 1,
+    paddingHorizontal: 12,
+  },
+  activeTripBannerTitle: {
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  activeTripBannerBody: {
+    color: colors.white,
+    fontSize: 10,
+    lineHeight: 15,
+    marginTop: 3,
+    opacity: 0.72,
+  },
+  activeTripBannerArrow: {
+    color: colors.orange,
+    fontSize: 22,
+    fontWeight: '900',
+  },
+  emptySavedCard: {
+    flex: 1,
+    minHeight: 360,
+    borderRadius: 26,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 28,
+  },
+  emptySavedIcon: {
+    width: 68,
+    height: 68,
+    borderRadius: 22,
+    backgroundColor: colors.teal,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptySavedIconText: {
+    color: colors.orange,
+    fontSize: 29,
+    fontWeight: '900',
+  },
+  emptySavedTitle: {
+    color: colors.ink,
+    fontSize: 20,
+    fontWeight: '900',
+    marginTop: 18,
+  },
+  emptySavedBody: {
+    color: colors.muted,
+    fontSize: 12,
+    lineHeight: 19,
+    textAlign: 'center',
+    marginTop: 7,
+    maxWidth: 280,
+  },
+  emptySavedButton: {
+    minHeight: 50,
+    borderRadius: 16,
+    backgroundColor: colors.orange,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    marginTop: 22,
+  },
+  emptySavedButtonText: {
+    color: colors.black,
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  emptySavedButtonArrow: {
+    color: colors.black,
+    fontSize: 20,
+    fontWeight: '900',
+    marginLeft: 10,
   },
   reliabilityCard: {
     borderRadius: 18,

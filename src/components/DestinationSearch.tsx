@@ -18,9 +18,8 @@ import {
   autocompletePlaces,
   destinationFromCoordinates,
   getPlaceDestination,
-  PlacesConfigurationError,
-} from '../services/places';
-import { createId } from '../utils/id';
+  GeoapifyConfigurationError,
+} from '../services/geoapify';
 import type { AppColors } from '../theme';
 import { useAppTheme } from '../themeContext';
 
@@ -28,9 +27,15 @@ type Props = {
   value: Destination | null;
   origin?: Coordinates;
   onChange: (destination: Destination | null) => void;
+  onOpenMap: () => void;
 };
 
-export function DestinationSearch({ value, origin, onChange }: Props) {
+export function DestinationSearch({
+  value,
+  origin,
+  onChange,
+  onOpenMap,
+}: Props) {
   const { colors } = useAppTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const [query, setQuery] = useState('');
@@ -41,9 +46,8 @@ export function DestinationSearch({ value, origin, onChange }: Props) {
   const [manualMode, setManualMode] = useState(false);
   const [latitude, setLatitude] = useState('');
   const [longitude, setLongitude] = useState('');
-  const [sessionToken, setSessionToken] = useState(() => createId('places'));
-  const placesConfigured = useMemo(
-    () => Boolean(process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY?.trim()),
+  const geoapifyConfigured = useMemo(
+    () => Boolean(process.env.EXPO_PUBLIC_GEOAPIFY_API_KEY?.trim()),
     [],
   );
 
@@ -60,7 +64,6 @@ export function DestinationSearch({ value, origin, onChange }: Props) {
       setError(null);
       autocompletePlaces(
         query,
-        sessionToken,
         origin,
         controller.signal,
       )
@@ -68,7 +71,7 @@ export function DestinationSearch({ value, origin, onChange }: Props) {
         .catch((caught: unknown) => {
           if (caught instanceof Error && caught.name === 'AbortError') return;
           setError(
-            caught instanceof PlacesConfigurationError ||
+            caught instanceof GeoapifyConfigurationError ||
               caught instanceof Error
               ? caught.message
               : 'Could not search for places.',
@@ -81,29 +84,13 @@ export function DestinationSearch({ value, origin, onChange }: Props) {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [manualMode, origin, query, sessionToken, value]);
+  }, [manualMode, origin, query, value]);
 
-  const selectSuggestion = async (suggestion: PlaceSuggestion) => {
-    setLoading(true);
+  const selectSuggestion = (suggestion: PlaceSuggestion) => {
     setError(null);
-    try {
-      const destination = await getPlaceDestination(
-        suggestion,
-        sessionToken,
-      );
-      onChange(destination);
-      setQuery('');
-      setSuggestions([]);
-      setSessionToken(createId('places'));
-    } catch (caught) {
-      setError(
-        caught instanceof Error
-          ? caught.message
-          : 'Could not load that destination.',
-      );
-    } finally {
-      setLoading(false);
-    }
+    onChange(getPlaceDestination(suggestion));
+    setQuery('');
+    setSuggestions([]);
   };
 
   const useCoordinates = () => {
@@ -192,14 +179,28 @@ export function DestinationSearch({ value, origin, onChange }: Props) {
             </Text>
           </View>
         </View>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Change destination"
-          hitSlop={12}
-          onPress={() => onChange(null)}
-        >
-          <Text style={styles.changeText}>Change</Text>
-        </Pressable>
+        <View style={styles.selectedActions}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Edit destination on map"
+            hitSlop={8}
+            style={({ pressed }) => [
+              styles.selectedMapButton,
+              pressed && styles.locationActionPressed,
+            ]}
+            onPress={onOpenMap}
+          >
+            <Text style={styles.selectedMapButtonText}>Map</Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Clear destination"
+            hitSlop={8}
+            onPress={() => onChange(null)}
+          >
+            <Text style={styles.changeText}>Clear</Text>
+          </Pressable>
+        </View>
       </View>
     );
   }
@@ -214,9 +215,11 @@ export function DestinationSearch({ value, origin, onChange }: Props) {
               accessibilityLabel="Search destination"
               autoCapitalize="words"
               autoCorrect={false}
-              editable={placesConfigured}
+              editable={geoapifyConfigured}
               placeholder={
-                placesConfigured ? 'Search your stop' : 'Place search unavailable'
+                geoapifyConfigured
+                  ? 'Search your stop'
+                  : 'Place search unavailable'
               }
               placeholderTextColor={colors.muted}
               style={styles.input}
@@ -235,7 +238,7 @@ export function DestinationSearch({ value, origin, onChange }: Props) {
                     styles.result,
                     pressed && styles.resultPressed,
                   ]}
-                  onPress={() => void selectSuggestion(suggestion)}
+                  onPress={() => selectSuggestion(suggestion)}
                 >
                   <Text style={styles.resultName}>{suggestion.primaryText}</Text>
                   {suggestion.secondaryText ? (
@@ -245,18 +248,23 @@ export function DestinationSearch({ value, origin, onChange }: Props) {
                   ) : null}
                 </Pressable>
               ))}
-              <Text style={styles.googleAttribution}>Powered by Google</Text>
             </View>
           ) : null}
 
-          {!placesConfigured ? (
+          {geoapifyConfigured ? (
+            <Text style={styles.providerAttribution}>
+              Powered by Geoapify · © OpenStreetMap contributors
+            </Text>
+          ) : null}
+
+          {!geoapifyConfigured ? (
             <View style={styles.placesUnavailable}>
               <Text style={styles.placesUnavailableTitle}>
-                Google place search is not configured
+                Free place search is not configured
               </Text>
               <Text style={styles.placesUnavailableBody}>
-                Use your current location or enter destination coordinates
-                below. These options work without API keys.
+                Add a free Geoapify key, use your current location, or enter
+                destination coordinates below. The map itself needs no key.
               </Text>
             </View>
           ) : null}
@@ -309,42 +317,65 @@ export function DestinationSearch({ value, origin, onChange }: Props) {
           <Text style={styles.manualLink}>Back to destination options</Text>
         </Pressable>
       ) : (
-        <View style={styles.locationActions}>
+        <>
           <Pressable
+            accessibilityHint="Opens a full-screen map where you can tap or drag a destination pin"
             accessibilityRole="button"
-            disabled={locating}
             style={({ pressed }) => [
-              styles.locationAction,
+              styles.mapPickerAction,
               pressed && styles.locationActionPressed,
-              locating && styles.locationActionDisabled,
             ]}
-            onPress={() => void useCurrentLocation()}
+            onPress={onOpenMap}
           >
-            {locating ? (
-              <ActivityIndicator color={colors.tealDark} size="small" />
-            ) : (
-              <Text style={styles.locationActionIcon}>⌖</Text>
-            )}
-            <Text style={styles.locationActionText}>
-              {locating ? 'Finding location…' : 'Use current location'}
-            </Text>
+            <View style={styles.mapPickerIcon}>
+              <Text style={styles.mapPickerIconText}>⌖</Text>
+            </View>
+            <View style={styles.mapPickerCopy}>
+              <Text style={styles.mapPickerTitle}>Choose on map</Text>
+              <Text style={styles.mapPickerBody}>
+                Tap a location and preview the alarm radius
+              </Text>
+            </View>
+            <Text style={styles.mapPickerArrow}>→</Text>
           </Pressable>
 
-          <Pressable
-            accessibilityRole="button"
-            style={({ pressed }) => [
-              styles.locationAction,
-              pressed && styles.locationActionPressed,
-            ]}
-            onPress={() => {
-              setManualMode(true);
-              setError(null);
-            }}
-          >
-            <Text style={styles.locationActionIcon}>#</Text>
-            <Text style={styles.locationActionText}>Enter latitude / longitude</Text>
-          </Pressable>
-        </View>
+          <View style={styles.locationActions}>
+            <Pressable
+              accessibilityRole="button"
+              disabled={locating}
+              style={({ pressed }) => [
+                styles.locationAction,
+                pressed && styles.locationActionPressed,
+                locating && styles.locationActionDisabled,
+              ]}
+              onPress={() => void useCurrentLocation()}
+            >
+              {locating ? (
+                <ActivityIndicator color={colors.tealDark} size="small" />
+              ) : (
+                <Text style={styles.locationActionIcon}>⌖</Text>
+              )}
+              <Text style={styles.locationActionText}>
+                {locating ? 'Finding location…' : 'Use current location'}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              accessibilityRole="button"
+              style={({ pressed }) => [
+                styles.locationAction,
+                pressed && styles.locationActionPressed,
+              ]}
+              onPress={() => {
+                setManualMode(true);
+                setError(null);
+              }}
+            >
+              <Text style={styles.locationActionIcon}>#</Text>
+              <Text style={styles.locationActionText}>Enter latitude / longitude</Text>
+            </Pressable>
+          </View>
+        </>
       )}
     </View>
   );
@@ -401,12 +432,12 @@ function createStyles(colors: AppColors) {
     fontSize: 13,
     marginTop: 3,
   },
-  googleAttribution: {
+  providerAttribution: {
     color: colors.muted,
     fontSize: 11,
     textAlign: 'right',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+    marginTop: 6,
+    paddingHorizontal: 4,
   },
   placesUnavailable: {
     borderLeftWidth: 3,
@@ -480,8 +511,28 @@ function createStyles(colors: AppColors) {
   },
   changeText: {
     color: colors.tealDark,
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '800',
+    textAlign: 'center',
+    marginTop: 7,
+  },
+  selectedActions: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  selectedMapButton: {
+    minWidth: 54,
+    minHeight: 34,
+    borderRadius: 11,
+    backgroundColor: colors.orange,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 9,
+  },
+  selectedMapButtonText: {
+    color: colors.black,
+    fontSize: 11,
+    fontWeight: '900',
   },
   manualCard: {
     borderRadius: 16,
@@ -538,6 +589,49 @@ function createStyles(colors: AppColors) {
     flexDirection: 'row',
     gap: 10,
     marginTop: 10,
+  },
+  mapPickerAction: {
+    minHeight: 68,
+    borderRadius: 17,
+    backgroundColor: colors.teal,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 13,
+    marginTop: 10,
+  },
+  mapPickerIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 13,
+    backgroundColor: colors.orange,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mapPickerIconText: {
+    color: colors.black,
+    fontSize: 22,
+    fontWeight: '900',
+  },
+  mapPickerCopy: {
+    flex: 1,
+    paddingHorizontal: 11,
+  },
+  mapPickerTitle: {
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  mapPickerBody: {
+    color: colors.white,
+    fontSize: 10,
+    lineHeight: 15,
+    marginTop: 2,
+    opacity: 0.72,
+  },
+  mapPickerArrow: {
+    color: colors.orange,
+    fontSize: 22,
+    fontWeight: '900',
   },
   locationAction: {
     flex: 1,

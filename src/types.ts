@@ -39,6 +39,8 @@ export type PlaceSuggestion = {
   primaryText: string;
   secondaryText: string;
   fullText: string;
+  latitude: number;
+  longitude: number;
 };
 
 export type AlarmTestResult = {

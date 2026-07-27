@@ -2,7 +2,7 @@
 
 **Purpose:** A personal-use mobile app that tracks location in the background during a bus commute and triggers a loud alarm + vibration + notification when the user is within a set distance of their destination, so they don't miss their stop while asleep.
 
-**Stack:** Expo (React Native), Google Maps SDK + Places Autocomplete (free tier), `expo-task-manager` + `expo-location` for background tracking, `expo-notifications` for alerts, local storage only (no backend, no app store publishing required).
+**Stack:** Expo (React Native), MapLibre + OpenFreeMap, Geoapify autocomplete (free tier), `expo-task-manager` + `expo-location` for background tracking, `expo-notifications` for alerts, local storage only (no backend, no app store publishing required).
 
 ---
 
@@ -13,7 +13,7 @@
 - Install Node.js and Expo CLI.
 - Create a new Expo project.
 - Install `expo-dev-client` (required for background location — plain Expo Go won't support it).
-- Get a Google Maps API key with Maps SDK + Places API enabled, restricted to this app.
+- Get a free Geoapify API key for autocomplete. OpenFreeMap requires no map key.
 - Build the dev client and install it on your phone via USB/Expo.
 
 **Deliverable:** Blank app running on your actual phone (not just an emulator).
@@ -24,7 +24,7 @@
 
 **Goal:** Validate the alarm logic while the app is open and screen is on.
 
-- Destination input screen using Google Places Autocomplete.
+- Destination input screen using Geoapify autocomplete.
 - Alarm radius selector (300m / 500m / 1km / custom).
 - "Start Trip" button that begins foreground location tracking (`watchPositionAsync`) with a live distance-remaining readout.
 - Haversine formula to calculate straight-line distance to destination on each location update.
@@ -68,6 +68,6 @@
 **Goal:** Ongoing improvements, only if desired — none of these are required for the app to work.
 
 - Recurring auto-schedule (auto-arm at your usual commute time on weekdays).
-- Route-snapping via Google Directions API instead of straight-line distance, for more accuracy on winding bus routes.
+- Route-snapping via an open routing service such as OSRM or Valhalla instead of straight-line distance, for more accuracy on winding bus routes.
 - Support for multiple simultaneous alarms (useful if your route involves a transfer).
 - Simple personal stats (e.g., number of times the alarm has saved you from missing your stop).

@@ -1,14 +1,22 @@
+import {
+  Camera,
+  GeoJSONSource,
+  Layer,
+  Map as MapLibreMap,
+  Marker,
+} from '@maplibre/maplibre-react-native';
 import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import MapView, {
-  Circle,
-  Marker,
-  PROVIDER_GOOGLE,
-} from 'react-native-maps';
 
 import type { AppColors } from '../theme';
 import { useAppTheme } from '../themeContext';
 import type { Coordinates, Destination } from '../types';
+
+export const OPEN_FREE_MAP_LIGHT =
+  'https://tiles.openfreemap.org/styles/liberty';
+export const OPEN_FREE_MAP_DARK =
+  'https://tiles.openfreemap.org/styles/fiord';
+const METERS_PER_LATITUDE_DEGREE = 111_320;
 
 type Props = {
   destination: Destination;
@@ -17,113 +25,236 @@ type Props = {
   height?: number;
 };
 
+export function createRadiusFeature(
+  destination: Destination,
+  radiusMeters: number,
+): GeoJSON.Feature<GeoJSON.Polygon> {
+  const latitudeRadians = (destination.latitude * Math.PI) / 180;
+  const latitudeRadius = radiusMeters / METERS_PER_LATITUDE_DEGREE;
+  const longitudeRadius =
+    radiusMeters /
+    (METERS_PER_LATITUDE_DEGREE *
+      Math.max(0.01, Math.cos(latitudeRadians)));
+  const coordinates: [number, number][] = [];
+
+  for (let index = 0; index <= 64; index += 1) {
+    const angle = (index / 64) * Math.PI * 2;
+    coordinates.push([
+      destination.longitude + Math.cos(angle) * longitudeRadius,
+      destination.latitude + Math.sin(angle) * latitudeRadius,
+    ]);
+  }
+
+  return {
+    type: 'Feature',
+    properties: {},
+    geometry: {
+      type: 'Polygon',
+      coordinates: [coordinates],
+    },
+  };
+}
+
+function createMapBounds(
+  destination: Destination,
+  currentLocation: Coordinates | null | undefined,
+  radiusMeters: number,
+): [number, number, number, number] {
+  const latitudeRadius =
+    Math.max(radiusMeters, 250) / METERS_PER_LATITUDE_DEGREE;
+  const longitudeRadius =
+    latitudeRadius /
+    Math.max(
+      0.01,
+      Math.cos((destination.latitude * Math.PI) / 180),
+    );
+  const latitudes = [
+    destination.latitude - latitudeRadius,
+    destination.latitude + latitudeRadius,
+  ];
+  const longitudes = [
+    destination.longitude - longitudeRadius,
+    destination.longitude + longitudeRadius,
+  ];
+
+  if (currentLocation) {
+    latitudes.push(currentLocation.latitude);
+    longitudes.push(currentLocation.longitude);
+  }
+
+  return [
+    Math.min(...longitudes),
+    Math.min(...latitudes),
+    Math.max(...longitudes),
+    Math.max(...latitudes),
+  ];
+}
+
 export function TripMap({
   destination,
   currentLocation,
   radiusMeters,
   height = 220,
 }: Props) {
-  const { colors } = useAppTheme();
+  const { colors, isDark } = useAppTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
-
-  if (!process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY?.trim()) {
-    return (
-      <View style={[styles.fallback, { height }]}>
-        <Text style={styles.fallbackIcon}>⌖</Text>
-        <Text style={styles.fallbackTitle}>Map preview is optional</Text>
-        <Text style={styles.fallbackBody}>
-          Add EXPO_PUBLIC_GOOGLE_MAPS_API_KEY to .env to show Google Maps.
-        </Text>
-      </View>
-    );
-  }
-
-  const latitudeDelta = currentLocation
-    ? Math.max(
-        0.015,
-        Math.abs(currentLocation.latitude - destination.latitude) * 1.7,
-      )
-    : 0.02;
-  const longitudeDelta = currentLocation
-    ? Math.max(
-        0.015,
-        Math.abs(currentLocation.longitude - destination.longitude) * 1.7,
-      )
-    : 0.02;
-  const center = currentLocation
-    ? {
-        latitude: (currentLocation.latitude + destination.latitude) / 2,
-        longitude: (currentLocation.longitude + destination.longitude) / 2,
-      }
-    : destination;
+  const radiusFeature = useMemo(
+    () => createRadiusFeature(destination, radiusMeters),
+    [destination, radiusMeters],
+  );
+  const bounds = useMemo(
+    () =>
+      createMapBounds(
+        destination,
+        currentLocation,
+        radiusMeters,
+      ),
+    [currentLocation, destination, radiusMeters],
+  );
 
   return (
-    <MapView
-      key={destination.placeId}
-      provider={PROVIDER_GOOGLE}
-      pitchEnabled={false}
-      rotateEnabled={false}
-      toolbarEnabled={false}
-      style={[styles.map, { height }]}
-      region={{ ...center, latitudeDelta, longitudeDelta }}
-    >
-      <Marker
-        coordinate={destination}
-        title={destination.name}
-        description={destination.address}
-        pinColor={colors.orange}
-      />
-      <Circle
-        center={destination}
-        radius={radiusMeters}
-        strokeColor="rgba(252, 163, 17, 0.9)"
-        fillColor="rgba(252, 163, 17, 0.16)"
-      />
-      {currentLocation ? (
-        <Marker
-          coordinate={currentLocation}
-          title="You"
-          pinColor={colors.teal}
+    <View style={[styles.mapShell, { height }]}>
+      <MapLibreMap
+        androidView="texture"
+        attribution
+        attributionPosition={{ bottom: 5, right: 5 }}
+        compass={false}
+        logo={false}
+        mapStyle={
+          isDark ? OPEN_FREE_MAP_DARK : OPEN_FREE_MAP_LIGHT
+        }
+        scaleBar={false}
+        style={styles.map}
+        touchPitch={false}
+        touchRotate={false}
+      >
+        <Camera
+          bounds={bounds}
+          duration={500}
+          easing="ease"
+          padding={{ top: 38, right: 38, bottom: 38, left: 38 }}
         />
-      ) : null}
-    </MapView>
+
+        <GeoJSONSource id="arrival-radius" data={radiusFeature}>
+          <Layer
+            id="arrival-radius-fill"
+            type="fill"
+            paint={{
+              'fill-color': colors.orange,
+              'fill-opacity': 0.18,
+            }}
+          />
+          <Layer
+            id="arrival-radius-outline"
+            type="line"
+            paint={{
+              'line-color': colors.orange,
+              'line-opacity': 0.95,
+              'line-width': 2,
+            }}
+          />
+        </GeoJSONSource>
+
+        <Marker
+          id="destination-marker"
+          anchor="bottom"
+          lngLat={[destination.longitude, destination.latitude]}
+        >
+          <View style={styles.destinationMarker}>
+            <View style={styles.destinationMarkerCore} />
+          </View>
+        </Marker>
+
+        {currentLocation ? (
+          <Marker
+            id="current-location-marker"
+            lngLat={[
+              currentLocation.longitude,
+              currentLocation.latitude,
+            ]}
+          >
+            <View style={styles.currentMarker}>
+              <View style={styles.currentMarkerCore} />
+            </View>
+          </Marker>
+        ) : null}
+      </MapLibreMap>
+
+      <View pointerEvents="none" style={styles.mapLabel}>
+        <Text style={styles.mapLabelText} numberOfLines={1}>
+          {destination.name}
+        </Text>
+      </View>
+    </View>
   );
 }
 
 function createStyles(colors: AppColors) {
   return StyleSheet.create({
-  map: {
-    width: '100%',
-    borderRadius: 20,
-  },
-  fallback: {
-    width: '100%',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: colors.border,
-    backgroundColor: colors.gray,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 28,
-  },
-  fallbackIcon: {
-    color: colors.teal,
-    fontSize: 30,
-    fontWeight: '800',
-  },
-  fallbackTitle: {
-    color: colors.ink,
-    fontWeight: '800',
-    fontSize: 15,
-    marginTop: 7,
-  },
-  fallbackBody: {
-    color: colors.muted,
-    fontSize: 12,
-    lineHeight: 18,
-    textAlign: 'center',
-    marginTop: 5,
-  },
+    mapShell: {
+      width: '100%',
+      overflow: 'hidden',
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.gray,
+    },
+    map: {
+      flex: 1,
+    },
+    destinationMarker: {
+      width: 30,
+      height: 30,
+      borderRadius: 15,
+      borderBottomLeftRadius: 3,
+      backgroundColor: colors.orange,
+      borderWidth: 3,
+      borderColor: colors.white,
+      alignItems: 'center',
+      justifyContent: 'center',
+      transform: [{ rotate: '-45deg' }],
+    },
+    destinationMarkerCore: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: colors.ink,
+    },
+    currentMarker: {
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      borderWidth: 3,
+      borderColor: colors.white,
+      backgroundColor: colors.tealDark,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    currentMarkerCore: {
+      width: 5,
+      height: 5,
+      borderRadius: 3,
+      backgroundColor: colors.white,
+    },
+    mapLabel: {
+      position: 'absolute',
+      top: 10,
+      left: 10,
+      maxWidth: '72%',
+      borderRadius: 10,
+      backgroundColor: colors.surface,
+      paddingHorizontal: 10,
+      paddingVertical: 7,
+      shadowColor: colors.black,
+      shadowOpacity: 0.15,
+      shadowRadius: 6,
+      shadowOffset: { width: 0, height: 2 },
+      elevation: 3,
+    },
+    mapLabelText: {
+      color: colors.ink,
+      fontSize: 11,
+      fontWeight: '800',
+    },
   });
 }

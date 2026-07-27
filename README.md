@@ -7,8 +7,9 @@ chosen radius.
 
 ## What is implemented
 
-- Google Places (New) autocomplete and Place Details lookup
-- Manual latitude/longitude fallback, so the app can work without Google keys
+- Geoapify destination autocomplete with coordinates returned in one request
+- MapLibre maps using OpenFreeMap light and dark vector styles
+- Manual latitude/longitude and current-location fallbacks
 - 300 m, 500 m, 1 km, and custom alarm radii
 - Foreground GPS updates with Haversine distance and live trip progress
 - Background location task with an Android foreground service
@@ -36,30 +37,27 @@ of this MVP.
 Background location is not supported by Expo Go. Use the included development
 client configuration.
 
-## Configure Google APIs
+## Configure the free map and search services
 
-The app remains usable with manually entered coordinates if you skip this
-section.
+MapLibre and OpenFreeMap display the map without an account, billing profile,
+or API key. Geoapify powers optional destination autocomplete and offers a
+free plan without requiring a credit card.
 
-1. Create a Google Cloud project with billing enabled.
-2. Enable **Maps SDK for Android**, **Maps SDK for iOS** (if needed), and
-   **Places API (New)**.
-3. Create two API keys:
-   - A native Maps key restricted to Android package `in.rentla.wakestop` and
-     its signing SHA-1 (and/or iOS bundle `in.rentla.wakestop`).
-   - A Places web-service key restricted to the Places API (New), with a small
-     daily quota. Since this is a no-backend personal app, the key is bundled
-     in the client and cannot use an IP restriction.
-4. Copy `.env.example` to `.env` and fill both values:
+1. Create a free account at <https://myprojects.geoapify.com/>.
+2. Create a project named **WakeStop**.
+3. Copy the automatically generated API key.
+4. Copy `.env.example` to `.env` and add the key:
 
 ```dotenv
-EXPO_PUBLIC_GOOGLE_MAPS_API_KEY=...
-EXPO_PUBLIC_GOOGLE_PLACES_API_KEY=...
+EXPO_PUBLIC_GEOAPIFY_API_KEY=...
 ```
 
 `EXPO_PUBLIC_` values are compiled into the app. Do not treat them as secrets.
-The native Maps key and Places key have different restriction models, which is
-why they are kept separate.
+The app remains usable with current-location and manually entered coordinates
+if the Geoapify key is omitted. Map display still works without it.
+
+Geoapify and OpenStreetMap attribution is shown in the search UI, and MapLibre
+shows the map-source attribution control on the map.
 
 ## Install and run
 
@@ -125,7 +123,7 @@ road shape, stop spacing, and bus speed all affect the best radius; begin at
 ```text
 App.tsx                         UI and foreground trip lifecycle
 src/backgroundLocationTask.ts  top-level Expo background task
-src/services/                  Places, storage, tracking, notifications
+src/services/                  Geoapify, storage, tracking, notifications
 src/utils/distance.ts          Haversine and update cadence
 src/components/                setup, map, radius, and alarm UI
 app.config.ts                  native permissions and config plugins
