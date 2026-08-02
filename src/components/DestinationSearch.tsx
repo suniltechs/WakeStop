@@ -43,16 +43,13 @@ export function DestinationSearch({
   const [loading, setLoading] = useState(false);
   const [locating, setLocating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [manualMode, setManualMode] = useState(false);
-  const [latitude, setLatitude] = useState('');
-  const [longitude, setLongitude] = useState('');
   const geoapifyConfigured = useMemo(
     () => Boolean(process.env.EXPO_PUBLIC_GEOAPIFY_API_KEY?.trim()),
     [],
   );
 
   useEffect(() => {
-    if (value || manualMode || query.trim().length < 3) {
+    if (value || query.trim().length < 3) {
       setSuggestions([]);
       setLoading(false);
       return;
@@ -84,33 +81,13 @@ export function DestinationSearch({
       clearTimeout(timer);
       controller.abort();
     };
-  }, [manualMode, origin, query, value]);
+  }, [origin, query, value]);
 
   const selectSuggestion = (suggestion: PlaceSuggestion) => {
     setError(null);
     onChange(getPlaceDestination(suggestion));
     setQuery('');
     setSuggestions([]);
-  };
-
-  const useCoordinates = () => {
-    const parsedLatitude = Number(latitude);
-    const parsedLongitude = Number(longitude);
-    if (
-      !Number.isFinite(parsedLatitude) ||
-      !Number.isFinite(parsedLongitude) ||
-      parsedLatitude < -90 ||
-      parsedLatitude > 90 ||
-      parsedLongitude < -180 ||
-      parsedLongitude > 180
-    ) {
-      setError('Enter a latitude from -90 to 90 and longitude from -180 to 180.');
-      return;
-    }
-
-    onChange(destinationFromCoordinates(parsedLatitude, parsedLongitude));
-    setError(null);
-    setManualMode(false);
   };
 
   const useCurrentLocation = async () => {
@@ -141,8 +118,6 @@ export function DestinationSearch({
         currentLongitude,
       );
 
-      setLatitude(currentLatitude.toFixed(6));
-      setLongitude(currentLongitude.toFixed(6));
       onChange({
         ...currentDestination,
         placeId: `current-location:${currentDestination.address}`,
@@ -207,8 +182,6 @@ export function DestinationSearch({
 
   return (
     <View>
-      {!manualMode ? (
-        <>
           <View style={styles.inputShell}>
             <Text style={styles.searchIcon}>⌕</Text>
             <TextInput
@@ -251,73 +224,20 @@ export function DestinationSearch({
             </View>
           ) : null}
 
-          {geoapifyConfigured ? (
-            <Text style={styles.providerAttribution}>
-              Powered by Geoapify · © OpenStreetMap contributors
-            </Text>
-          ) : null}
-
           {!geoapifyConfigured ? (
             <View style={styles.placesUnavailable}>
               <Text style={styles.placesUnavailableTitle}>
                 Free place search is not configured
               </Text>
               <Text style={styles.placesUnavailableBody}>
-                Add a free Geoapify key, use your current location, or enter
-                destination coordinates below. The map itself needs no key.
+                Add a free Geoapify key, use your current location, or choose
+                a destination on the map. The map itself needs no key.
               </Text>
             </View>
           ) : null}
-        </>
-      ) : (
-        <View style={styles.manualCard}>
-          <Text style={styles.manualTitle}>Enter latitude and longitude</Text>
-          <View style={styles.coordinateRow}>
-            <View style={styles.coordinateField}>
-              <Text style={styles.coordinateLabel}>Latitude</Text>
-              <TextInput
-                accessibilityLabel="Destination latitude"
-                keyboardType="numbers-and-punctuation"
-                placeholder="e.g. 12.971599"
-                placeholderTextColor={colors.muted}
-                style={[styles.inputShell, styles.coordinateInput]}
-                value={latitude}
-                onChangeText={setLatitude}
-              />
-            </View>
-            <View style={styles.coordinateField}>
-              <Text style={styles.coordinateLabel}>Longitude</Text>
-              <TextInput
-                accessibilityLabel="Destination longitude"
-                keyboardType="numbers-and-punctuation"
-                placeholder="e.g. 77.594566"
-                placeholderTextColor={colors.muted}
-                style={[styles.inputShell, styles.coordinateInput]}
-                value={longitude}
-                onChangeText={setLongitude}
-              />
-            </View>
-          </View>
-          <Pressable style={styles.coordinateButton} onPress={useCoordinates}>
-            <Text style={styles.coordinateButtonText}>Use these coordinates</Text>
-          </Pressable>
-        </View>
-      )}
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
-      {manualMode ? (
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => {
-            setManualMode(false);
-            setError(null);
-          }}
-        >
-          <Text style={styles.manualLink}>Back to destination options</Text>
-        </Pressable>
-      ) : (
-        <>
           <Pressable
             accessibilityHint="Opens a full-screen map where you can tap or drag a destination pin"
             accessibilityRole="button"
@@ -360,23 +280,7 @@ export function DestinationSearch({
               </Text>
             </Pressable>
 
-            <Pressable
-              accessibilityRole="button"
-              style={({ pressed }) => [
-                styles.locationAction,
-                pressed && styles.locationActionPressed,
-              ]}
-              onPress={() => {
-                setManualMode(true);
-                setError(null);
-              }}
-            >
-              <Text style={styles.locationActionIcon}>#</Text>
-              <Text style={styles.locationActionText}>Enter latitude / longitude</Text>
-            </Pressable>
           </View>
-        </>
-      )}
     </View>
   );
 }
@@ -431,13 +335,6 @@ function createStyles(colors: AppColors) {
     color: colors.muted,
     fontSize: 13,
     marginTop: 3,
-  },
-  providerAttribution: {
-    color: colors.muted,
-    fontSize: 11,
-    textAlign: 'right',
-    marginTop: 6,
-    paddingHorizontal: 4,
   },
   placesUnavailable: {
     borderLeftWidth: 3,
@@ -533,57 +430,6 @@ function createStyles(colors: AppColors) {
     color: colors.black,
     fontSize: 11,
     fontWeight: '900',
-  },
-  manualCard: {
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    padding: 14,
-  },
-  manualTitle: {
-    color: colors.ink,
-    fontSize: 14,
-    fontWeight: '800',
-    marginBottom: 10,
-  },
-  coordinateRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  coordinateField: {
-    flex: 1,
-  },
-  coordinateLabel: {
-    color: colors.muted,
-    fontSize: 11,
-    fontWeight: '700',
-    marginBottom: 5,
-  },
-  coordinateInput: {
-    width: '100%',
-    minHeight: 50,
-    paddingVertical: 10,
-    color: colors.ink,
-  },
-  coordinateButton: {
-    marginTop: 10,
-    minHeight: 46,
-    borderRadius: 13,
-    backgroundColor: colors.teal,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  coordinateButtonText: {
-    color: colors.white,
-    fontWeight: '800',
-  },
-  manualLink: {
-    color: colors.tealDark,
-    fontSize: 13,
-    fontWeight: '700',
-    marginTop: 10,
-    textAlign: 'center',
   },
   locationActions: {
     flexDirection: 'row',
