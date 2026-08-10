@@ -28,6 +28,7 @@ import {
   useState,
 } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Octicons } from '@react-native-vector-icons/octicons/static';
 
 import {
   destinationFromCoordinates,
@@ -418,7 +419,7 @@ export function DestinationMapPicker({
             {locating ? (
               <ActivityIndicator color={colors.orange} size="small" />
             ) : (
-              <Text style={styles.locationButtonIcon}>⌖</Text>
+              <Octicons color={colors.orange} name="location" size={24} />
             )}
           </Pressable>
         </View>
@@ -585,10 +586,12 @@ function createStyles(colors: AppColors) {
       flex: 1,
     },
     mapHint: {
+      height: 46,
       borderRadius: 12,
       backgroundColor: colors.teal,
       paddingHorizontal: 12,
-      paddingVertical: 8,
+      alignItems: 'center',
+      justifyContent: 'center',
       position: 'absolute',
       top: 12,
       left: 12,
@@ -618,11 +621,6 @@ function createStyles(colors: AppColors) {
       shadowOpacity: 0.16,
       shadowRadius: 5,
       shadowOffset: { width: 0, height: 3 },
-    },
-    locationButtonIcon: {
-      color: colors.orange,
-      fontSize: 24,
-      fontWeight: '900',
     },
     controlDisabled: {
       opacity: 0.65,

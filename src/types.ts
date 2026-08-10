@@ -3,6 +3,11 @@ export type Coordinates = {
   longitude: number;
 };
 
+export type LocationReading = Coordinates & {
+  accuracyMeters: number | null;
+  speedMetersPerSecond: number | null;
+};
+
 export type Destination = Coordinates & {
   placeId: string;
   name: string;
@@ -21,6 +26,8 @@ export type ActiveTrip = {
   lastDistanceMeters: number | null;
   lastLocation: Coordinates | null;
   lastUpdatedAt: number | null;
+  lastAccuracyMeters: number | null;
+  lastReliableUpdateAt: number | null;
   lastProgressNotificationAt: number | null;
   alarmTriggeredAt: number | null;
   snoozedUntil: number | null;

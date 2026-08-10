@@ -4,7 +4,11 @@ import {
   BACKGROUND_LOCATION_TASK,
   SNOOZE_DURATION_MS,
 } from '../constants';
-import type { ActiveTrip, Coordinates, Destination } from '../types';
+import type {
+  ActiveTrip,
+  Coordinates,
+  Destination,
+} from '../types';
 import { haversineDistanceMeters } from '../utils/distance';
 import { createId } from '../utils/id';
 import {
@@ -79,6 +83,8 @@ export async function startTrip(
     lastDistanceMeters: initialDistanceMeters,
     lastLocation: current,
     lastUpdatedAt: now,
+    lastAccuracyMeters: position.coords.accuracy,
+    lastReliableUpdateAt: now,
     lastProgressNotificationAt: null,
     alarmTriggeredAt: null,
     snoozedUntil: null,

@@ -22,8 +22,15 @@ async function readJson<T>(key: string, fallback: T): Promise<T> {
   }
 }
 
-export function getActiveTrip(): Promise<ActiveTrip | null> {
-  return readJson<ActiveTrip | null>(ACTIVE_TRIP_STORAGE_KEY, null);
+export async function getActiveTrip(): Promise<ActiveTrip | null> {
+  const trip = await readJson<ActiveTrip | null>(ACTIVE_TRIP_STORAGE_KEY, null);
+  if (!trip) return null;
+
+  return {
+    ...trip,
+    lastAccuracyMeters: trip.lastAccuracyMeters ?? null,
+    lastReliableUpdateAt: trip.lastReliableUpdateAt ?? trip.lastUpdatedAt,
+  };
 }
 
 export async function setActiveTrip(trip: ActiveTrip): Promise<void> {

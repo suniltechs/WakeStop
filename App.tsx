@@ -11,6 +11,7 @@ import {
 import * as Location from 'expo-location';
 import * as Notifications from 'expo-notifications';
 import { StatusBar } from 'expo-status-bar';
+import { SimpleLineIcons } from '@react-native-vector-icons/simple-line-icons/static';
 import {
   SafeAreaProvider,
   SafeAreaView,
@@ -63,6 +64,7 @@ import type {
   ActiveTrip,
   Coordinates,
   Destination,
+  LocationReading,
   SavedRoute,
 } from './src/types';
 import {
@@ -282,9 +284,11 @@ function WakeStopApp() {
         distanceInterval: 10,
       },
       (location) => {
-        const current = {
+        const current: LocationReading = {
           latitude: location.coords.latitude,
           longitude: location.coords.longitude,
+          accuracyMeters: location.coords.accuracy,
+          speedMetersPerSecond: location.coords.speed,
         };
         setOrigin(current);
         void processTripLocation(current, location.timestamp, false).then(
@@ -316,7 +320,6 @@ function WakeStopApp() {
       Alert.alert('Check the radius', 'Choose a radius from 100 to 20,000 meters.');
       return;
     }
-
     setBusy(true);
     setNotice(null);
     try {
@@ -430,6 +433,8 @@ function WakeStopApp() {
         lastDistanceMeters: 250,
         lastLocation: null,
         lastUpdatedAt: now,
+        lastAccuracyMeters: null,
+        lastReliableUpdateAt: null,
         lastProgressNotificationAt: null,
         alarmTriggeredAt: now,
         snoozedUntil: null,
@@ -564,7 +569,6 @@ function WakeStopApp() {
           activeTab={activeTab}
           tripActive={Boolean(trip)}
           onChange={setActiveTab}
-          onChooseMap={handleOpenMapPicker}
         />
       </View>
       <DestinationMapPicker
@@ -654,7 +658,11 @@ function SetupScreen({
             ]}
             onPress={onOpenSettings}
           >
-            <Text style={styles.headerSettingsIcon}>⚙</Text>
+            <SimpleLineIcons
+              color={colors.ink}
+              name="settings"
+              size={24}
+            />
           </Pressable>
         </View>
 
@@ -695,6 +703,7 @@ function SetupScreen({
               currentLocation={origin}
               destination={destination}
               radiusMeters={radiusMeters}
+              onPress={onOpenMap}
             />
             <Pressable style={styles.saveButton} onPress={onSave}>
               <Text style={styles.saveButtonText}>＋ Save for one-tap start</Text>
@@ -719,14 +728,6 @@ function SetupScreen({
             ]}
           >
             {busy ? 'Preparing permissions…' : 'Start trip'}
-          </Text>
-          <Text
-            style={[
-              styles.startArrow,
-              (!destination || busy) && styles.startButtonTextDisabled,
-            ]}
-          >
-            →
           </Text>
         </Pressable>
 
@@ -927,11 +928,10 @@ function SavedStopsScreen({
                 styles.emptySavedButton,
                 pressed && styles.buttonPressed,
               ]}
-              onPress={onCreateAlarm}
-            >
-              <Text style={styles.emptySavedButtonText}>Create an alarm</Text>
-              <Text style={styles.emptySavedButtonArrow}>→</Text>
-            </Pressable>
+            onPress={onCreateAlarm}
+          >
+            <Text style={styles.emptySavedButtonText}>Create an alarm</Text>
+          </Pressable>
           </View>
         )}
       </ScrollView>
@@ -1014,7 +1014,11 @@ function ActiveTripScreen({
             ]}
             onPress={onOpenSettings}
           >
-            <Text style={styles.headerSettingsIcon}>⚙</Text>
+            <SimpleLineIcons
+              color={colors.ink}
+              name="settings"
+              size={24}
+            />
           </Pressable>
           <View style={styles.armedPill}>
             <View style={styles.armedDot} />
@@ -1182,12 +1186,15 @@ function createStyles(colors: AppColors) {
   },
   readyPill: {
     marginLeft: 'auto',
-    borderRadius: 14,
-    backgroundColor: colors.tealSoft,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    height: 40,
+    borderRadius: 13,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    paddingHorizontal: 12,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   readyDot: {
     width: 7,
@@ -1215,11 +1222,6 @@ function createStyles(colors: AppColors) {
   },
   activeSettingsButton: {
     marginLeft: 'auto',
-  },
-  headerSettingsIcon: {
-    color: colors.ink,
-    fontSize: 20,
-    lineHeight: 24,
   },
   hero: {
     paddingTop: 42,
@@ -1333,12 +1335,6 @@ function createStyles(colors: AppColors) {
   },
   startButtonTextDisabled: {
     color: colors.muted,
-  },
-  startArrow: {
-    color: colors.black,
-    fontSize: 25,
-    fontWeight: '600',
-    marginLeft: 13,
   },
   testAlarmCard: {
     borderRadius: 18,
@@ -1615,12 +1611,6 @@ function createStyles(colors: AppColors) {
     color: colors.black,
     fontSize: 14,
     fontWeight: '900',
-  },
-  emptySavedButtonArrow: {
-    color: colors.black,
-    fontSize: 20,
-    fontWeight: '900',
-    marginLeft: 10,
   },
   reliabilityCard: {
     borderRadius: 18,

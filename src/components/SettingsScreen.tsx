@@ -7,6 +7,10 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+  MaterialIcons,
+  type MaterialIconsIconName,
+} from '@react-native-vector-icons/material-icons/static';
 
 import type { AppColors } from '../theme';
 import {
@@ -20,31 +24,33 @@ type Props = {
 
 const THEME_OPTIONS: Array<{
   mode: ThemeMode;
-  icon: string;
+  icon: MaterialIconsIconName;
   title: string;
   description: string;
 }> = [
   {
     mode: 'light',
-    icon: '☀',
+    icon: 'light-mode',
     title: 'Light mode',
     description: 'Use the bright white WakeStop interface.',
   },
   {
     mode: 'dark',
-    icon: '●',
+    icon: 'dark-mode',
     title: 'Dark mode',
     description: 'Use the navy and black low-light interface.',
   },
   {
     mode: 'system',
-    icon: '◐',
+    icon: 'brightness-auto',
     title: 'System default',
     description: 'Follow your phone appearance automatically.',
   },
 ];
 
-export function SettingsScreen({ onOpenReliability }: Props) {
+export function SettingsScreen({
+  onOpenReliability,
+}: Props) {
   const {
     colors,
     mode,
@@ -113,14 +119,11 @@ export function SettingsScreen({ onOpenReliability }: Props) {
                     selected && styles.optionIconSelected,
                   ]}
                 >
-                  <Text
-                    style={[
-                      styles.optionIconText,
-                      selected && styles.optionIconTextSelected,
-                    ]}
-                  >
-                    {option.icon}
-                  </Text>
+                  <MaterialIcons
+                    color={selected ? colors.black : colors.ink}
+                    name={option.icon}
+                    size={24}
+                  />
                 </View>
                 <View style={styles.optionCopy}>
                   <Text style={styles.optionTitle}>{option.title}</Text>
@@ -284,14 +287,6 @@ function createStyles(colors: AppColors) {
     },
     optionIconSelected: {
       backgroundColor: colors.orange,
-    },
-    optionIconText: {
-      color: colors.ink,
-      fontSize: 21,
-      fontWeight: '900',
-    },
-    optionIconTextSelected: {
-      color: colors.black,
     },
     optionCopy: {
       flex: 1,

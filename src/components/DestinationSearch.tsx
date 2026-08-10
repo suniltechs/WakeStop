@@ -8,6 +8,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Octicons } from '@react-native-vector-icons/octicons/static';
 
 import type {
   Coordinates,
@@ -248,7 +249,7 @@ export function DestinationSearch({
             onPress={onOpenMap}
           >
             <View style={styles.mapPickerIcon}>
-              <Text style={styles.mapPickerIconText}>⌖</Text>
+              <Octicons color={colors.black} name="location" size={24} />
             </View>
             <View style={styles.mapPickerCopy}>
               <Text style={styles.mapPickerTitle}>Choose on map</Text>
@@ -273,7 +274,12 @@ export function DestinationSearch({
               {locating ? (
                 <ActivityIndicator color={colors.tealDark} size="small" />
               ) : (
-                <Text style={styles.locationActionIcon}>⌖</Text>
+                <Octicons
+                  color={colors.tealDark}
+                  name="location"
+                  size={24}
+                  style={styles.locationActionIcon}
+                />
               )}
               <Text style={styles.locationActionText}>
                 {locating ? 'Finding location…' : 'Use current location'}
@@ -453,11 +459,6 @@ function createStyles(colors: AppColors) {
     alignItems: 'center',
     justifyContent: 'center',
   },
-  mapPickerIconText: {
-    color: colors.black,
-    fontSize: 22,
-    fontWeight: '900',
-  },
   mapPickerCopy: {
     flex: 1,
     paddingHorizontal: 11,
@@ -499,9 +500,6 @@ function createStyles(colors: AppColors) {
     opacity: 0.58,
   },
   locationActionIcon: {
-    color: colors.tealDark,
-    fontSize: 20,
-    fontWeight: '900',
     marginRight: 6,
   },
   locationActionText: {

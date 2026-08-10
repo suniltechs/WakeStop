@@ -6,7 +6,7 @@ import {
   Marker,
 } from '@maplibre/maplibre-react-native';
 import { useMemo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { AppColors } from '../theme';
 import { useAppTheme } from '../themeContext';
@@ -23,6 +23,7 @@ type Props = {
   currentLocation?: Coordinates | null;
   radiusMeters: number;
   height?: number;
+  onPress?: () => void;
 };
 
 export function createRadiusFeature(
@@ -95,6 +96,7 @@ export function TripMap({
   currentLocation,
   radiusMeters,
   height = 220,
+  onPress,
 }: Props) {
   const { colors, isDark } = useAppTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
@@ -180,6 +182,19 @@ export function TripMap({
         ) : null}
       </MapLibreMap>
 
+      {onPress ? (
+        <Pressable
+          accessibilityHint="Opens an interactive full-screen map"
+          accessibilityLabel="Expand destination map"
+          accessibilityRole="button"
+          style={({ pressed }) => [
+            styles.mapPressTarget,
+            pressed && styles.mapPressed,
+          ]}
+          onPress={onPress}
+        />
+      ) : null}
+
       <View pointerEvents="none" style={styles.mapLabel}>
         <Text style={styles.mapLabelText} numberOfLines={1}>
           {destination.name}
@@ -201,6 +216,17 @@ function createStyles(colors: AppColors) {
     },
     map: {
       flex: 1,
+    },
+    mapPressTarget: {
+      position: 'absolute',
+      top: 0,
+      right: 0,
+      bottom: 0,
+      left: 0,
+      zIndex: 1,
+    },
+    mapPressed: {
+      backgroundColor: 'rgba(0,0,0,0.06)',
     },
     destinationMarker: {
       width: 30,
@@ -238,6 +264,7 @@ function createStyles(colors: AppColors) {
     },
     mapLabel: {
       position: 'absolute',
+      zIndex: 2,
       top: 10,
       left: 10,
       maxWidth: '72%',

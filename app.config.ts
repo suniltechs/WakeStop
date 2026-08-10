@@ -27,8 +27,17 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     permissions: ['VIBRATE', 'WAKE_LOCK'],
   },
   plugins: [
-    'expo-dev-client',
+    [
+      'expo-dev-client',
+      {
+        toolsButton: false,
+      },
+    ],
     '@maplibre/maplibre-react-native',
+    '@react-native-vector-icons/ant-design',
+    '@react-native-vector-icons/material-icons',
+    '@react-native-vector-icons/octicons',
+    '@react-native-vector-icons/simple-line-icons',
     [
       'expo-location',
       {
