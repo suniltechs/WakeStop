@@ -633,7 +633,7 @@ function SetupScreen({
   const styles = useMemo(() => createStyles(colors), [colors]);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={['top']} style={styles.safeArea}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
@@ -993,7 +993,7 @@ function ActiveTripScreen({
   const snoozeRemainder = String(snoozeSeconds % 60).padStart(2, '0');
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={['top']} style={styles.safeArea}>
       <ScrollView
         contentContainerStyle={styles.activeContent}
         showsVerticalScrollIndicator={false}

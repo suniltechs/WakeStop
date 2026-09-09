@@ -185,7 +185,7 @@ function createStyles(colors: AppColors) {
       zIndex: 20,
     },
     bar: {
-      height: 70,
+      height: 56,
       backgroundColor: colors.surface,
       flexDirection: 'row',
       alignItems: 'center',
@@ -194,7 +194,7 @@ function createStyles(colors: AppColors) {
     tab: {
       flex: 1,
       minWidth: 64,
-      height: 70,
+      height: 56,
       alignItems: 'center',
       justifyContent: 'center',
     },
