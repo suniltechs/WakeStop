@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   AppState,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -642,7 +643,11 @@ function SetupScreen({
       >
         <View style={styles.brandRow}>
           <View style={styles.brandMark}>
-            <Text style={styles.brandMarkText}>◎</Text>
+            <Image
+              resizeMode="contain"
+              source={require('./assets/logo_2.png')}
+              style={styles.brandMarkImage}
+            />
           </View>
           <Text style={styles.brandName}>WakeStop</Text>
           <View style={styles.readyPill}>
@@ -1171,23 +1176,19 @@ function createStyles(colors: AppColors) {
     alignItems: 'center',
   },
   brandMark: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.teal,
   },
-  brandMarkText: {
-    color: colors.white,
-    fontSize: 23,
-    fontWeight: '900',
+  brandMarkImage: {
+    width: 28,
+    height: 28,
+    tintColor: colors.ink,
   },
   brandName: {
     color: colors.ink,
     fontSize: 20,
     fontWeight: '900',
-    marginLeft: 10,
+    marginLeft: 4,
   },
   readyPill: {
     marginLeft: 'auto',
