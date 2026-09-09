@@ -22,6 +22,7 @@ import {
   type AppTab,
   BottomNavigation,
 } from './src/components/BottomNavigation';
+import { BusMarkerIcon } from './src/components/BusMarkerIcon';
 import { DestinationMapPicker } from './src/components/DestinationMapPicker';
 import { DestinationSearch } from './src/components/DestinationSearch';
 import { IntroScreen } from './src/components/IntroScreen';
@@ -916,7 +917,11 @@ function SavedStopsScreen({
         ) : (
           <View style={styles.emptySavedCard}>
             <View style={styles.emptySavedIcon}>
-              <Text style={styles.emptySavedIconText}>★</Text>
+              <BusMarkerIcon
+                color={colors.orange}
+                cutoutColor={colors.surface}
+                size={64}
+              />
             </View>
             <Text style={styles.emptySavedTitle}>No saved stops yet</Text>
             <Text style={styles.emptySavedBody}>
@@ -1571,10 +1576,6 @@ function createStyles(colors: AppColors) {
     padding: 28,
   },
   emptySavedIcon: {
-    width: 68,
-    height: 68,
-    borderRadius: 22,
-    backgroundColor: colors.teal,
     alignItems: 'center',
     justifyContent: 'center',
   },

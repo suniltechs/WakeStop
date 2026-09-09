@@ -6,6 +6,7 @@
     "@maplibre/maplibre-react-native": "^11.3.6",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-vector-icons/ant-design": "^13.1.2",
+    "@react-native-vector-icons/material-design-icons": "^13.1.4",
     "@react-native-vector-icons/material-icons": "^13.1.2",
     "@react-native-vector-icons/octicons": "^21.1.2",
     "@react-native-vector-icons/simple-line-icons": "^13.1.2",

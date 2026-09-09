@@ -35,6 +35,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ],
     '@maplibre/maplibre-react-native',
     '@react-native-vector-icons/ant-design',
+    '@react-native-vector-icons/material-design-icons',
     '@react-native-vector-icons/material-icons',
     '@react-native-vector-icons/octicons',
     '@react-native-vector-icons/simple-line-icons',

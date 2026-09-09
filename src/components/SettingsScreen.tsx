@@ -8,9 +8,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  MaterialIcons,
-  type MaterialIconsIconName,
-} from '@react-native-vector-icons/material-icons/static';
+  Octicons,
+  type OcticonsIconName,
+} from '@react-native-vector-icons/octicons/static';
 
 import type { AppColors } from '../theme';
 import {
@@ -24,25 +24,25 @@ type Props = {
 
 const THEME_OPTIONS: Array<{
   mode: ThemeMode;
-  icon: MaterialIconsIconName;
+  icon: OcticonsIconName;
   title: string;
   description: string;
 }> = [
   {
     mode: 'light',
-    icon: 'light-mode',
+    icon: 'sun',
     title: 'Light mode',
     description: 'Use the bright white WakeStop interface.',
   },
   {
     mode: 'dark',
-    icon: 'dark-mode',
+    icon: 'moon',
     title: 'Dark mode',
     description: 'Use the navy and black low-light interface.',
   },
   {
     mode: 'system',
-    icon: 'brightness-auto',
+    icon: 'device-mobile',
     title: 'System default',
     description: 'Follow your phone appearance automatically.',
   },
@@ -119,10 +119,10 @@ export function SettingsScreen({
                     selected && styles.optionIconSelected,
                   ]}
                 >
-                  <MaterialIcons
+                  <Octicons
                     color={selected ? colors.black : colors.ink}
                     name={option.icon}
-                    size={24}
+                    size={22}
                   />
                 </View>
                 <View style={styles.optionCopy}>
