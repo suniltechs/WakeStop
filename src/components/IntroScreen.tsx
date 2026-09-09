@@ -3,6 +3,7 @@ import {
   AccessibilityInfo,
   Animated,
   Easing,
+  Image,
   Pressable,
   StyleSheet,
   Text,
@@ -216,11 +217,11 @@ export function IntroScreen({ onComplete }: Props) {
                   },
                 ]}
               >
-                {/* Replace this block with your final logo Image later. */}
-                <View style={styles.logoPlaceholder}>
-                  <Text style={styles.logoGlyph}>◎</Text>
-                </View>
-                <View style={styles.logoAccent} />
+                <Image
+                  resizeMode="contain"
+                  source={require('../../assets/logo_1.png')}
+                  style={styles.logoImage}
+                />
               </Animated.View>
             </View>
 
@@ -331,41 +332,14 @@ const styles = StyleSheet.create({
   logoShell: {
     width: 112,
     height: 112,
-    borderRadius: 34,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: colors.black,
-    shadowOpacity: 0.28,
-    shadowRadius: 28,
-    shadowOffset: { width: 0, height: 18 },
-    elevation: 12,
-  },
-  logoPlaceholder: {
-    width: 78,
-    height: 78,
-    borderRadius: 25,
-    backgroundColor: colors.teal,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  logoGlyph: {
-    color: colors.white,
-    fontSize: 49,
-    lineHeight: 57,
-    fontWeight: '900',
+  logoImage: {
+    width: 110,
+    height: 110,
   },
-  logoAccent: {
-    position: 'absolute',
-    width: 13,
-    height: 13,
-    borderRadius: 7,
-    right: 12,
-    bottom: 12,
-    backgroundColor: colors.orange,
-    borderWidth: 3,
-    borderColor: colors.surface,
-  },
+
   wordmarkGroup: {
     alignItems: 'center',
     marginTop: 7,
